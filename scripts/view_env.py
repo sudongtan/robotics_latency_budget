@@ -1,6 +1,6 @@
 """Open the Go1 joystick model in the native MuJoCo viewer (Phase 0 sanity check).
 
-Run with `uv run mjpython scripts/view_env.py` on macOS: the passive viewer needs
+Run with `scripts/mjpython.sh scripts/view_env.py` on macOS: the passive viewer needs
 `mjpython` because macOS only lets the main thread own the GUI.
 
 The robot holds its "home" keyframe pose: the position actuators track the default

@@ -43,14 +43,13 @@ The project asks:
 
 - **Headline figure:** success rate vs. delay, one curve per method, with confidence intervals.
 - **Side-by-side videos:** baseline vs. best method at ~60 ms delay.
-- **Workshop-style paper** (6–8 pages) and a blog post.
 - **Reproducible code:** one command per figure; reported compute cost.
 
 ## Progress
 
 | Phase | Status |
 |---|---|
-| 0. Setup: environment, tooling, simulator running | In progress: simulator runs and renders on laptop; environment documented |
+| 0. Setup: environment, tooling, simulator running | Done: simulator runs and renders on laptop; environment documented; tooling and experiment tracking set up |
 | 1. Delay and motor-lag simulation, with tests | Not started |
 | 2. Own PPO implementation, validated against a reference | Not started |
 | 3. Pre-registration of hypotheses | Not started |

@@ -140,5 +140,6 @@ height or tilt threshold) on top of the env's termination; decide in Phase 2.
 ## Mac observations
 
 - Model renders with `mujoco.Renderer`; robot holds the home pose (trunk height 0.26 m after 2 s).
-- Viewer: `uv run mjpython scripts/view_env.py`.
+- Interactive viewer confirmed by owner 2026-11-04 (via `scripts/mjpython.sh`).
+- Viewer: `scripts/mjpython.sh scripts/view_env.py`. Bare `uv run mjpython` fails with `Library not loaded: @rpath/libpython3.12.dylib` (uv's standalone Python keeps libpython in its own LIBDIR, which mjpython does not search); the wrapper sets `DYLD_FALLBACK_LIBRARY_PATH` to that LIBDIR.
 - Random actions ±1 make the robot fall within 200 steps (`done = 1`), as expected.

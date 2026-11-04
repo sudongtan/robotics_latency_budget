@@ -50,7 +50,7 @@ The project asks:
 | Phase | Status |
 |---|---|
 | 0. Setup: environment, tooling, simulator running | Done: simulator runs and renders on laptop; environment documented; tooling and experiment tracking set up |
-| 1. Delay and motor-lag simulation, with tests | Not started |
+| 1. Delay and motor-lag simulation, with tests | Done: action/observation delay (4 ms resolution, jitter), explicit motor control with motor lag; 58 tests incl. no-future-leakage and parity with the original simulator; demo video of a feedback controller failing at 80 ms delay |
 | 2. Own PPO implementation, validated against a reference | Not started |
 | 3. Pre-registration of hypotheses | Not started |
 | 4. Main experiment sweep (GPU) | Not started |
@@ -59,7 +59,7 @@ The project asks:
 | 7. Analysis: cross-evaluation, probing, gait | Not started |
 | 8. Paper, videos, write-up | Not started |
 
-Current state: research design complete (see [notes/planned_implementation.md](notes/planned_implementation.md)).
+Current state: simulation layer complete; next is the PPO implementation (Phase 2).
 
 ## Tech stack
 

@@ -18,3 +18,6 @@ rsync "${RSYNC_FLAGS[@]}" --delete \
   --exclude '__pycache__/' --exclude '.pytest_cache/' --exclude '.ruff_cache/' \
   --exclude '.mypy_cache/' --exclude '.DS_Store' \
   ./ "$GPU_HOST:$GPU_DIR/"
+# rsync -a keeps the Mac's uid; git on the box then refuses the repo ("dubious ownership")
+# and runs could not record their commit (R5).
+"${SSH[@]}" "$GPU_HOST" "git config --global --add safe.directory \"\$HOME/$GPU_DIR\" && cd '$GPU_DIR' && echo \"box at \$(git rev-parse --short HEAD), dirty files: \$(git status --porcelain --untracked-files=no | wc -l)\""

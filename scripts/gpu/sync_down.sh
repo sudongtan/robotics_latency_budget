@@ -9,7 +9,8 @@ source "$(dirname "$0")/common.sh"
 cd "$REPO_ROOT"
 mkdir -p runs
 
-pull() { rsync "${RSYNC_FLAGS[@]}" "$GPU_HOST:$GPU_DIR/runs/" runs/; }
+# On success, runs/.last_pull is touched; scripts/gpu/health.sh alerts if it gets old.
+pull() { rsync "${RSYNC_FLAGS[@]}" "$GPU_HOST:$GPU_DIR/runs/" runs/ && touch runs/.last_pull; }
 
 verify() {
   # Dry run with checksums: lists any file that still differs from the box.

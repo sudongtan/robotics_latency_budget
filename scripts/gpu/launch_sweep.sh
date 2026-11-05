@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Run ON the GPU box: run every job of a sweep file in sequence (one GPU), detached with
 # nohup so the ssh session can drop. A failing RUN is logged and the queue goes on; a failing
-# STEP or GATE stops the queue (scripts/gpu/sweep.py). Logs: runs/_sweeps/<sweep>_<time>/{jobNN.log,status}.
+# STEP or GATE stops the queue; a TIER marker stops it if the cost cap said so
+# (scripts/gpu/sweep.py). Logs: runs/_sweeps/<sweep>_<time>/{jobNN.log,status}.
 # The Mac pulls runs/ during the sweep with sync_down.sh --watch.
 #   bash scripts/gpu/launch_sweep.sh configs/sweeps/s1_calibration.yaml
 #   bash scripts/gpu/launch_sweep.sh --dry-run configs/sweeps/s1_calibration.yaml
@@ -28,6 +29,11 @@ i=0
 while IFS= read -r line; do
   i=\$((i + 1)); log=\$(printf '%s/job%02d.log' "$logdir" \$i)
   kind=\${line%% *}; cmd=\${line#* }
+  if [[ \$kind == TIER ]]; then
+    tier=\${cmd%% *}; stop=\$(cat "$logdir/stop_before_tier" 2>/dev/null || echo 999)
+    if (( tier >= stop )); then echo "\$(date '+%FT%T%z') SKIPPING tier \$tier and later (cost cap)" >> "$logdir/status"; break; fi
+    echo "\$(date '+%FT%T%z') TIER \$cmd" >> "$logdir/status"; continue
+  fi
   impl=\$(cat "$logdir/impl" 2>/dev/null || echo jax)
   cmd=\${cmd//@IMPL@/\$impl}; cmd=\${cmd//@LOGDIR@/$logdir}
   echo "\$(date '+%FT%T%z') start \$i [\$kind]: \$cmd" >> "$logdir/status"

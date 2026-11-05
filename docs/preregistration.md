@@ -111,4 +111,51 @@ native MuJoCo), dynamics perturbations, gait changes with latency, time-resolved
 
 ## Post-hoc notes
 
-(Added after the main sweep starts, labeled, never replacing text above.)
+(Added after the freeze, labeled, never replacing text above.)
+
+### 2026-11-05: clarifications and deviations before any data
+
+Written after a review of the frozen text and before session S (no main-sweep run exists).
+They resolve ambiguities and fix one modelling error; no hypothesis or threshold changes.
+
+**Clarifications of the decision rules (§5, §6)**
+
+1. **Censored L50.** If success stays ≥ 50 % at every action latency up to 120 ms, that seed's
+   L50 is right-censored and enters IQMs and differences as 120 ms (conservative: it understates
+   the more robust condition). The number of censored seeds per condition is reported. Same rule
+   for L90 / L10 in W (§5). H4's robustness part: if at least half the seeds of D or of E are
+   censored, the L50 comparison is uninformative and H4 is judged instead on mean success over the
+   action-latency grid 0–120 ms (no jitter), equivalence margin ±5 percentage points (90 % CI).
+2. **H5 pairing.** "Same-channel" and "cross-channel" refer to the same policy: a policy trained
+   with action delay (C, D, E) evaluated on the action-latency axis (same channel) and on the
+   observation-latency axis (cross channel) at equal total delay; for the observation-trained
+   policies (the ablations C, D, E with observation delay) the roles swap. The rule must hold for
+   each of the six policies (IQM over seeds) at 20, 40, …, 120 ms. Points where both success values
+   are ≥ 95 % or both ≤ 5 % are reported as floor/ceiling points; H5 is "supported" only if at most
+   half of each policy's points are floor/ceiling, otherwise "inconclusive".
+3. **Nominal tracking error (H2, H3).** Per-episode linear-velocity tracking error (`lin_err`,
+   m/s, excluding the first 0.5 s), at 0 ms action delay, jitter off, non-fallen episodes only;
+   mean over episodes per seed; IQM over seeds. H3's recovery R uses these IQMs, with a bootstrap
+   CI; if the CI of err_C − err_A includes 0, H3 is "inconclusive" (nothing to recover).
+4. **Wall-clock (H4).** Total training wall-clock for 200M steps (excluding the evaluation grid),
+   measured on the same GPU and backend within one session. Time to 90 % of final return (§5) is
+   reported as a secondary measure and is not used for H4.
+5. **Condition F's latency input under jitter** is the delay drawn at the previous control step
+   (one step stale when jitter changes it). Jitter results are exploratory (§7).
+
+**Deviations before data**
+
+1. **Actuator-lag model** (affects the motor-lag ablation and evaluation axis only). The first
+   implementation low-pass filtered the whole PD torque. That puts the lag inside each joint's
+   feedback loop, which is unstable for T_m > Kd/Kp ≈ 14 ms: the robot falls at zero action, before
+   the policy acts. Most of the planned range (training U[0, 40 ms], evaluation 0–60 ms) would have
+   tested an unstable joint controller rather than a slow actuator. The lag now filters the joint
+   target the PD loop tracks; the loop is stable for any T_m. Ranges unchanged.
+2. **Critic input (§3).** "The critic never sees the latency" should read "never sees the latency
+   value". Its input (Playground's `privileged_state`) includes the delivered joint torques, which
+   are computed from the delayed target, so they carry an indirect latency signal. This is the same
+   for every condition; no actor sees it.
+3. **Operational:** probing traces use 128 episodes per set (was 32), and the GPU session stops
+   automatically if its projected hours exceed a cap. Neither affects any hypothesis test.
+   Robustness at intermediate training checkpoints is computed afterwards on the laptop from the
+   saved checkpoints (exploratory, for "robustness per unit of training cost").

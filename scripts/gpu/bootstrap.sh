@@ -39,5 +39,5 @@ SMOKE_ENVS="${SMOKE_ENVS:-8192}"
 rm -rf runs/gpusmoke_A_mlp_s0_*
 uv run python scripts/train.py experiment=A seed=0 train.run_prefix=gpusmoke_ \
   ppo.num_envs="$SMOKE_ENVS" train.total_steps="$SMOKE_STEPS" train.num_evals=1 \
-  train.eval_envs=128 train.log_every=5 ${SMOKE_ARGS:-}
+  train.eval_envs=128 train.log_every=5 mjx_eval=smoke ${SMOKE_ARGS:-}
 echo "bootstrap: OK"

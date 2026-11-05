@@ -109,10 +109,14 @@ def test_session_sweep_expands():
     sweep = _load("sweep")
     cmds = sweep.commands(str(ROOT / "configs" / "sweeps" / "session_s.yaml"))
     kinds = [c.split()[0] for c in cmds]
-    assert kinds.count("GATE") == 1 and kinds.count("STEP") == 1
-    gate_i, step_i = kinds.index("GATE"), kinds.index("STEP")
-    assert step_i < gate_i
-    before = " ".join(cmds[:gate_i])
+    assert kinds.count("GATE") == 1 and kinds.count("STEP") == 2 and kinds.count("RUN") == 101
+    gate_i = kinds.index("GATE")
+    pick, cap = (i for i, k in enumerate(kinds) if k == "STEP")
+    tiers = {int(c.split()[1]): i for i, c in enumerate(cmds) if c.startswith("TIER")}
+    assert list(tiers) == [0, 1, 2, 3, 4]
+    assert "pick_backend" in cmds[pick] and "cost_cap" in cmds[cap]
+    assert pick < cap < tiers[0] < gate_i < tiers[1] < tiers[2] < tiers[3] < tiers[4]
+    calib = " ".join(cmds[tiers[0] : gate_i])
     for name in (
         "experiment=A seed=0",
         "experiment=A seed=1",
@@ -121,5 +125,48 @@ def test_session_sweep_expands():
         "experiment=E seed=0",
         "env=ours",
     ):
-        assert name in before, name  # everything the gate reads runs before it
-    assert all("@IMPL@" in c for c in cmds[step_i + 1 :] if c.startswith("RUN"))
+        assert name in calib, name  # everything the gate reads runs before it
+    assert all("@IMPL@" in c for c in cmds[cap + 1 :] if c.startswith("RUN"))
+
+
+def _tier(cmds, n):
+    idx = [i for i, c in enumerate(cmds) if c.startswith(("TIER", "GATE"))] + [len(cmds)]
+    start = next(i for i, c in enumerate(cmds) if c.startswith(f"TIER {n}"))
+    end = next(i for i in idx if i > start)
+    return [c for c in cmds[start:end] if c.startswith("RUN")]
+
+
+def test_tier_contents_and_balanced_rounds():
+    """D36: tier 1 holds every core condition incl. the obs-delay runs H5 needs, seeds 0-4;
+    within a tier, seed s of every condition precedes seed s+1 of any."""
+    import re
+
+    cmds = _load("sweep").commands(str(ROOT / "configs" / "sweeps" / "session_s.yaml"))
+
+    def pairs(n):
+        return [
+            (
+                re.search(r"experiment=(\S+)", c).group(1).split("/")[-1],
+                int(re.search(r"seed=(\d+)", c).group(1)),
+            )
+            for c in _tier(cmds, n)
+        ]
+
+    t1 = pairs(1)
+    t1_all = set(t1) | {("A", 0), ("A", 1), ("C", 0), ("D", 0), ("E", 0)}  # + calibration
+    core = ["A", "C", "D", "E", "F", "C_obs", "D_obs", "E_obs"]
+    assert t1_all == {(e, s) for e in core for s in range(5)}
+    for n in (1, 2, 3, 4):
+        seeds = [s for _, s in pairs(n)]
+        assert seeds == sorted(seeds), n
+    assert {e for e, _ in pairs(2)} == {"C", "D", "E", "F"}
+    assert {s for _, s in pairs(2)} == set(range(5, 10))
+    assert {e for e, _ in pairs(3)} == {"B20", "B40", "B60"}
+    assert {e for e, _ in pairs(4)} == {"C_tm", "D_tm", "E_tm", "DH2", "DH8"}
+
+
+def test_session_sweep_matches_generator():
+    """configs/sweeps/session_s.yaml is generated; hand edits would drift from the script."""
+    gen = _load("make_session_sweep")
+    expected = gen.HEADER + "\n".join(gen.lines()) + "\n"
+    assert (ROOT / "configs" / "sweeps" / "session_s.yaml").read_text() == expected

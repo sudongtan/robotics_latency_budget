@@ -154,10 +154,13 @@ noise are upstream's. Per control step (20 ms):
 1. The policy action `a_t` (12 numbers in [−1, 1]) is sent into the **action delay line**
    with this step's delay `d_a` (substeps; D14 newest-arrived rule under jitter).
 2. For each of the 5 physics substeps `i`: take the newest arrived action, map it to a joint
-   target `q* = default_pose + 0.5·a`, clip to the joint range, compute
-   `τ_cmd = 35·(q* − q) − 0.5·q̇` from the current joint angle and velocity, low-pass it
-   with motor time constant `T_m`, clip to ±23.7 / ±35.55 N·m, and step MuJoCo with that
-   torque. (Model actuators are plain motors, gain 1; `dof_damping` = 0.)
+   target `q* = default_pose + 0.5·a`, clip to the joint range, low-pass the target with
+   actuator time constant `T_m` (`q_lag ← q_lag + α(q* − q_lag)`, α = Δp/(T_m + Δp)), compute
+   `τ = 35·(q_lag − q) − 0.5·q̇` from the current joint angle and velocity, clip to
+   ±23.7 / ±35.55 N·m, and step MuJoCo with that torque. (Model actuators are plain motors,
+   gain 1; `dof_damping` = 0.) The lag acts on the target, not the torque: lagging the whole
+   PD torque makes each joint loop unstable for T_m > Kd/Kp ≈ 14 ms (the robot falls at zero
+   action); lagging the target leaves the loop stable for any T_m.
 3. Upstream bookkeeping: contacts, obs (with noise), termination, reward, command resampling.
 4. The proprioceptive obs (0:33) goes into the **obs delay line** with delay `d_o` (control
    steps); the policy gets the newest arrived one. `last_act` (33:45) = `a_t`; command

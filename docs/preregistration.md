@@ -1,13 +1,12 @@
 # Pre-registration
 
-**Status: DRAFT, not frozen.** Sections marked *(proposed)* await the owner's approval. When
-approved, this file is committed and the commit hash is recorded under "Freeze" below. After
-the main sweep starts, nothing above "Post-hoc notes" changes (project rule R6).
+**Status: FROZEN** (approved by the owner on 2026-11-05). Nothing above "Post-hoc notes" changes
+after this point (project rule R6); later notes go in that section, labeled.
 
 ## Freeze
 
 - Hypotheses frozen at commit: *(pending)*
-- Date: *(pending)*
+- Date: 2026-11-05
 
 ## 1. Question
 
@@ -73,7 +72,7 @@ setting and every run:
 
 **Fall:** trunk height < 0.15 m or tilt > 60° at any control step.
 
-**Success** *(proposed)*: no fall for 20 s **and** mean linear-velocity tracking error (excluding
+**Success:** no fall for 20 s **and** mean linear-velocity tracking error (excluding
 the first 0.5 s) ≤ τ, where τ is the 95th percentile of the per-episode tracking error of
 condition A's non-fallen episodes at 0 ms (pooled over A's 5 seeds). τ is computed once from
 those runs before any other condition is analysed and recorded here as a post-hoc number.
@@ -91,7 +90,7 @@ Across seeds: interquartile mean (IQM) with stratified bootstrap 95 % CIs (rliab
 No best-seed numbers. Six hypotheses, one primary test each; no multiplicity correction; all
 results reported.
 
-## 6. Decision rules *(proposed)*
+## 6. Decision rules
 
 | | Supported if |
 |---|---|

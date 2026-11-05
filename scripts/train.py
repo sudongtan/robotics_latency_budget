@@ -6,9 +6,11 @@ metrics.jsonl (training), eval.jsonl, checkpoints/, params.json (parameter count
     uv run python scripts/train.py experiment=A ppo.num_envs=64 ppo.num_minibatches=4 \
         train.total_steps=2e6 train.run_prefix=smoke_
 
-Run id: {prefix}{experiment}_{policy}_s{seed}_{shortcommit} (CLAUDE.md). Refuses to
-overwrite an existing run directory. Seeds (R9): one root key from `seed`, split into fixed
-named streams below; nothing else draws randomness.
+Run id: {prefix}{experiment}_{policy}_s{seed}_{shortcommit} (CLAUDE.md). Restartable (D31):
+if runs/<run_id>/ is already finished (has DONE) the job exits at once; an unfinished
+directory (interrupted run) is moved to runs/_partial/ and the run starts over. Finished runs
+are listed in runs/_ledger.jsonl. Seeds (R9): one root key from `seed`, split into fixed named
+streams below; nothing else draws randomness.
 """
 
 from __future__ import annotations
@@ -19,15 +21,10 @@ import pathlib
 import time
 
 import hydra
-import jax
 import numpy as np
 from omegaconf import DictConfig, OmegaConf
 
-from latrl.envs.go1 import make_env
-from latrl.eval.mjx_eval import Evaluator
-from latrl.policies.networks import num_params
-from latrl.ppo import checkpoint
-from latrl.ppo.trainer import Trainer
+from latrl.utils import runs
 from latrl.utils.provenance import git_commit, write_run_meta
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -46,9 +43,20 @@ def main(cfg: DictConfig) -> None:
     sha, dirty = git_commit()
     run_id = f"{cfg.train.run_prefix}{cfg.experiment.name}_{cfg.policy.name}_s{cfg.seed}_{sha}"
     run_dir = ROOT / cfg.train.runs_dir / run_id
-    if run_dir.exists():
-        raise FileExistsError(f"{run_dir} exists; delete it or change seed/prefix")
+    if runs.prepare(run_dir) == "skip":
+        print(f"run {run_id}: already finished, skipping", flush=True)
+        return
     run_dir.mkdir(parents=True)
+
+    # Heavy imports only for runs that actually train (a skipped job takes seconds).
+    import jax
+
+    from latrl.envs.go1 import make_env
+    from latrl.eval.mjx_eval import Evaluator
+    from latrl.policies.networks import num_params
+    from latrl.ppo import checkpoint
+    from latrl.ppo.trainer import Trainer
+
     resolved = OmegaConf.to_container(cfg, resolve=True)
     (run_dir / "config.yaml").write_text(OmegaConf.to_yaml(cfg, resolve=True))
     write_run_meta(run_dir, resolved, int(cfg.seed))
@@ -152,7 +160,17 @@ def main(cfg: DictConfig) -> None:
             for name, record in evaluator.traces(k_traces).items():
                 np.savez_compressed(run_dir / "traces" / f"{name}.npz", **record(ts))
             timing["traces_s"] = time.time() - te
-    (run_dir / "DONE").write_text(json.dumps(timing | {"wall_s": time.time() - t0}))
+    runs.finish(
+        run_dir,
+        timing
+        | {
+            "wall_s": time.time() - t0,
+            "commit": sha,
+            "seed": int(cfg.seed),
+            "experiment": str(cfg.experiment.name),
+            "policy": str(cfg.policy.name),
+        },
+    )
     if wb:
         wb.finish()
 

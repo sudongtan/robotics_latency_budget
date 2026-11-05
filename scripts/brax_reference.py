@@ -34,6 +34,7 @@ from mujoco_playground.config import locomotion_params
 from omegaconf import OmegaConf
 
 from latrl.envs.go1 import ENV_NAME, make_env
+from latrl.utils import runs
 from latrl.utils.provenance import git_commit, write_run_meta
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -95,8 +96,9 @@ def main() -> None:
     sha, dirty = git_commit()
     run_id = f"{args.prefix}brax_{args.env}_s{args.seed}_{sha}"
     run_dir = ROOT / args.runs_dir / run_id
-    if run_dir.exists():
-        raise FileExistsError(run_dir)
+    if runs.prepare(run_dir) == "skip":  # restartable sweeps (D31)
+        print(f"run {run_id}: already finished, skipping", flush=True)
+        return
     run_dir.mkdir(parents=True)
     config = {
         "args": OmegaConf.to_container(args),
@@ -140,8 +142,16 @@ def main() -> None:
         **params,
     )
     eval_f.close()
-    (run_dir / "DONE").write_text(
-        json.dumps({"wall_s": time.time() - t0, "devices": str(jax.devices())})
+    runs.finish(
+        run_dir,
+        {
+            "wall_s": time.time() - t0,
+            "devices": str(jax.devices()),
+            "commit": sha,
+            "seed": int(args.seed),
+            "experiment": f"brax_{args.env}",
+            "policy": "brax",
+        },
     )
 
 

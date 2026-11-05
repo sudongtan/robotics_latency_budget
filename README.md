@@ -51,7 +51,7 @@ The project asks:
 |---|---|
 | 0. Setup: environment, tooling, simulator running | Done: simulator runs and renders on laptop; environment documented; tooling and experiment tracking set up |
 | 1. Delay and motor-lag simulation, with tests | Done: action/observation delay (4 ms resolution, jitter), explicit motor control with motor lag; 58 tests incl. no-future-leakage and parity with the original simulator; demo video of a feedback controller failing at 80 ms delay |
-| 2. Own PPO implementation, validated against a reference | In progress (Mac part done): JAX PPO with MLP, history and GRU policies, matching the Playground/Brax reference setup; tested against NumPy and Brax references; all three policies learn in short laptop runs; GPU calibration run (S1) pending |
+| 2. Own PPO implementation, validated against a reference | In progress (Mac part done): JAX PPO with MLP, history and GRU policies, matching the Playground/Brax reference setup; tested against NumPy and Brax references; all three policies learn in short laptop runs; GPU calibration moved into the single GPU session |
 | 3. Pre-registration of hypotheses | Not started |
 | 4. Main experiment sweep (GPU) | Not started |
 | 5. Evaluation and first results | Not started |
@@ -59,7 +59,7 @@ The project asks:
 | 7. Analysis: cross-evaluation, probing, gait | Not started |
 | 8. Paper, videos, write-up | Not started |
 
-Current state: PPO implemented and smoke-tested on the laptop; next is the GPU calibration session (S1) comparing it with Brax PPO.
+Current state: PPO implemented and smoke-tested on the laptop. All GPU work (calibration against Brax PPO, main sweep, ablations) will run in one rental; next is building and testing everything that rental runs on the laptop.
 
 ## Tech stack
 

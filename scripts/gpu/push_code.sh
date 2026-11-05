@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Mac -> GPU box: copy the committed public repo (incl. .git, so runs record the commit; R5).
-# Private notes (notes/, CLAUDE.md, .git-private/), runs/ and the venv are never sent.
+# Private notes (notes/, CLAUDE.md, .git-private/), runs/ and the venv are never sent;
+# --delete never touches runs/ on the box (excluded paths are protected).
 # Refuses a dirty tree: a run's commit hash must describe the code that ran.
 #   bash scripts/gpu/push_code.sh            # then on the box: bash scripts/gpu/bootstrap.sh
 set -euo pipefail
@@ -13,7 +14,7 @@ fi
 echo "push_code: $(git rev-parse --short HEAD) -> $GPU_HOST:$GPU_DIR"
 "${SSH[@]}" "$GPU_HOST" "mkdir -p '$GPU_DIR'"
 rsync "${RSYNC_FLAGS[@]}" --delete \
-  --exclude '.venv/' --exclude 'runs/' --exclude 'notes/' --exclude 'CLAUDE.md' \
+  --exclude '.venv/' --include 'runs/.gitkeep' --exclude 'runs/*' --exclude 'notes/' --exclude 'CLAUDE.md' \
   --exclude '.git-private/' --exclude 'wandb/' --exclude 'outputs/' --exclude 'multirun/' \
   --exclude '__pycache__/' --exclude '.pytest_cache/' --exclude '.ruff_cache/' \
   --exclude '.mypy_cache/' --exclude '.DS_Store' \

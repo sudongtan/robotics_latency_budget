@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Run ON the GPU box: run every job of a sweep file in sequence (one GPU), detached with
-# nohup so the ssh session can drop. Logs: runs/_sweeps/<sweep>_<time>/{jobNN.log,status}.
+# nohup so the ssh session can drop. A failing RUN is logged and the queue goes on; a failing
+# STEP or GATE stops the queue (scripts/gpu/sweep.py). Logs: runs/_sweeps/<sweep>_<time>/{jobNN.log,status}.
 # The Mac pulls runs/ during the sweep with sync_down.sh --watch.
 #   bash scripts/gpu/launch_sweep.sh configs/sweeps/s1_calibration.yaml
 #   bash scripts/gpu/launch_sweep.sh --dry-run configs/sweeps/s1_calibration.yaml
@@ -24,11 +25,16 @@ cat > "$logdir/run.sh" <<RUN
 #!/usr/bin/env bash
 cd "$PWD"
 i=0
-while IFS= read -r cmd; do
+while IFS= read -r line; do
   i=\$((i + 1)); log=\$(printf '%s/job%02d.log' "$logdir" \$i)
-  echo "\$(date '+%FT%T%z') start \$i: \$cmd" >> "$logdir/status"
+  kind=\${line%% *}; cmd=\${line#* }
+  impl=\$(cat "$logdir/impl" 2>/dev/null || echo jax)
+  cmd=\${cmd//@IMPL@/\$impl}; cmd=\${cmd//@LOGDIR@/$logdir}
+  echo "\$(date '+%FT%T%z') start \$i [\$kind]: \$cmd" >> "$logdir/status"
   if bash -c "\$cmd" < /dev/null > "\$log" 2>&1; then r=ok; else r="FAILED(\$?)"; fi
   echo "\$(date '+%FT%T%z') \$r \$i" >> "$logdir/status"
+  if [[ \$r != ok && \$kind == GATE ]]; then echo "\$(date '+%FT%T%z') GATE FAILED: queue stopped" >> "$logdir/status"; break; fi
+  if [[ \$r != ok && \$kind == STEP ]]; then echo "\$(date '+%FT%T%z') STEP FAILED: queue stopped" >> "$logdir/status"; break; fi
 done < "$logdir/commands.txt"
 echo "\$(date '+%FT%T%z') SWEEP DONE" >> "$logdir/status"
 RUN

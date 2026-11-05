@@ -52,7 +52,7 @@ def _install_jax_compat() -> None:
     jax.device_put_replicated = device_put_replicated
 
 
-DEFAULTS = {"seed": 0, "env": "ours", "prefix": "", "runs_dir": "runs"}
+DEFAULTS = {"seed": 0, "env": "ours", "prefix": "", "runs_dir": "runs", "impl": None}
 # Brax keys that may be overridden from the CLI (scale only, for Mac smoke tests).
 SCALE_KEYS = (
     "num_timesteps",
@@ -86,6 +86,8 @@ def main() -> None:
     _install_jax_compat()
     args = OmegaConf.merge(DEFAULTS, OmegaConf.from_cli())
     env_cfg = _env_cfg()
+    if args.impl:  # MJX backend chosen for the session (pick_backend.py)
+        env_cfg.impl = args.impl
     rl = locomotion_params.brax_ppo_config(ENV_NAME, impl=env_cfg.impl)
     for k in SCALE_KEYS:
         if k in args:

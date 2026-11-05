@@ -1,0 +1,11 @@
+# @package _global_
+# Actuator ablation: E's policy, motor time constant T_m ~ U[0, 40 ms], no delay.
+defaults:
+  - override /policy: gru
+experiment: {name: E_tm}
+env:
+  latency:
+    action: {lo: 0, hi: 0}
+  actuator:
+    tm_lo: 0.0
+    tm_hi: 0.04

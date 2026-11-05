@@ -15,7 +15,7 @@ from latrl.ppo import normalizer
 from latrl.ppo.trainer import make_actor
 
 POLICY_DIR = ENV_CFG.parents[1] / "policy"
-POLICIES = ["mlp", "history", "gru", "privileged"]
+POLICIES = ["mlp", "history", "gru", "privileged", "history2", "history8"]
 
 
 def _actor(name):

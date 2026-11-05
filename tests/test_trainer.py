@@ -19,8 +19,9 @@ N, T, EP = 4, 10, 7  # episodes of 7 steps force truncations inside each 10-step
 
 
 @functools.cache
-def _trainer(policy: str):
+def _trainer(policy: str, impl: str = "jax"):
     env_cfg = OmegaConf.load(ENV_CFG)
+    env_cfg.impl = impl
     env_cfg.latency.action.hi = 20  # condition C range
     env_cfg.noise_level = 0.0
     ppo = OmegaConf.load(CFG / "ppo" / "default.yaml")
@@ -47,9 +48,11 @@ def _rollout(tr, models, in_axes, ts, carry, steps, key):
     return out
 
 
-def test_latency_resampled_on_reset():
-    """F16: after every episode end the env is fully reset, so per-episode latency changes."""
-    tr, models, in_axes, ts, carry = _trainer("mlp")
+@pytest.mark.parametrize("impl", ["jax", "warp"])
+def test_latency_resampled_on_reset(impl):
+    """F16: after every episode end the env is fully reset, so per-episode latency changes.
+    Also on the warp backend, whose state has leaves without a per-env axis (B6)."""
+    tr, models, in_axes, ts, carry = _trainer("mlp", impl)
     seen = [np.asarray(carry.env_state.info["latency"].action_base)]
     dones = []
     for c, trans in _rollout(tr, models, in_axes, ts, carry, 3 * EP, jax.random.PRNGKey(1)):

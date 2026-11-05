@@ -1,0 +1,11 @@
+# @package _global_
+# Actuator ablation: C's policy, motor time constant T_m ~ U[0, 40 ms], no delay.
+defaults:
+  - override /policy: mlp
+experiment: {name: C_tm}
+env:
+  latency:
+    action: {lo: 0, hi: 0}
+  actuator:
+    tm_lo: 0.0
+    tm_hi: 0.04

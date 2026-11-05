@@ -137,6 +137,10 @@ class Transition:
 
 def _tree_where(mask: jax.Array, a: Any, b: Any) -> Any:
     def f(x, y):
+        # Leaves without a per-env leading axis (the warp backend keeps some shared, e.g.
+        # shape (0,)) are passed through, as Playground's BraxAutoResetWrapper does.
+        if x.ndim == 0 or x.shape[0] != mask.shape[0]:
+            return y
         m = mask.reshape(mask.shape + (1,) * (x.ndim - mask.ndim))
         return jp.where(m, x, y)
 

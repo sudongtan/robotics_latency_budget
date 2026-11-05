@@ -1,0 +1,9 @@
+# @package _global_
+# Obs-vs-action ablation: D's policy, observation delay U{0..4} steps (0–80 ms), no action delay.
+defaults:
+  - override /policy: history
+experiment: {name: D_obs}
+env:
+  latency:
+    action: {lo: 0, hi: 0}
+    obs: {lo: 0, hi: 4}

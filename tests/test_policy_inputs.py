@@ -66,7 +66,7 @@ def test_r4_latency_only_in_privileged_features(make):
 def test_only_condition_f_uses_privileged_input():
     exp_dir = ENV_CFG.parents[1] / "experiment"
     pol_dir = ENV_CFG.parents[1] / "policy"
-    for path in sorted(exp_dir.glob("*.yaml")):
+    for path in sorted(exp_dir.glob("**/*.yaml")):
         cfg = OmegaConf.load(path)
         policy = [d["override /policy"] for d in cfg.defaults if "override /policy" in d][0]
         mode = OmegaConf.load(pol_dir / f"{policy}.yaml").input

@@ -1,0 +1,12 @@
+# GPU session S1 (plan §9 step 15): calibration. NOT approved yet; see the Phase 2 report.
+# Run order = list order. Each job writes runs/<run_id>/; the Mac pulls with sync_down.sh --watch.
+jobs:
+  # 1. Implementation check: Brax PPO vs ours on condition A, 2 seeds each.
+  - {script: scripts/brax_reference.py, seeds: [0, 1], overrides: ["env=ours"]}
+  - {experiment: A, seeds: [0, 1]}
+  # 2. Our env vs Playground's own env under Brax PPO (env changes did not make the task harder).
+  - {script: scripts/brax_reference.py, seeds: [0], overrides: ["env=upstream"]}
+  # 3. Pipeline + wall-clock per architecture under latency randomization.
+  - {experiment: C, seeds: [0]}
+  - {experiment: D, seeds: [0]}
+  - {experiment: E, seeds: [0]}

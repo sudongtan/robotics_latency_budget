@@ -179,3 +179,24 @@ Upstream behaviors found while building it (verified on mujoco_playground 0.2.0)
   forcing one retrace of any jitted loop; our step casts metrics to float32 (F18).
 - **Reward clipped at 0.** Per-step reward is `clip(sum·dt, 0, ∞)`: a robot doing badly
   gets 0, not a negative reward.
+
+## Verified library APIs (Phase 2, 2026-11-05)
+
+Checked against the installed versions (brax 0.14.2, flax 0.12.12, optax 0.2.8,
+mujoco_playground 0.2.0). Our PPO does not import Brax at run time except for the
+`domain_randomize` function; Brax is used as the reference (`scripts/brax_reference.py`)
+and in tests.
+
+| API | What we rely on |
+|---|---|
+| `mujoco_playground.config.locomotion_params.brax_ppo_config(env_name, impl=None)` | Go1 joystick: 200M steps, 8192 envs, batch 256 × 32 minibatches, unroll 20, 4 epochs, γ 0.97, lr 3e-4, entropy 1e-2, grad clip 1.0, reward scaling 1, `num_resets_per_eval` 10, networks (512, 256, 128) both, policy `state`, value `privileged_state` |
+| `brax.training.agents.ppo.train.train(...)` | defaults used by the reference: `clipping_epsilon` 0.3, `gae_lambda` 0.95, `vf_loss_coefficient` 0.5, `normalize_advantage` True, `bootstrap_on_timeout` False, **`deterministic_eval` False** (our reference script sets True to match our eval) |
+| `brax...ppo.losses.compute_gae` | value targets = GAE λ-return; **policy advantage = r + γ·vs_{t+1} − V** (not GAE; F21); recomputed per minibatch with current critic |
+| `brax...ppo.networks.make_ppo_networks` | `tanh_normal` distribution by default; policy MLP outputs loc and raw scale (state-dependent); swish; LeCun-uniform |
+| `brax.training.distribution.NormalTanhDistribution` | scale = softplus(raw) + 0.001; entropy = Gaussian entropy + log-det-Jacobian at one sample; our `latrl.policies.distribution` matches it (test) |
+| `brax.training.acme.running_statistics` | Welford update, std clipped to [1e-6, 1e6], no value clipping; updated from the rollout before SGD |
+| `mujoco_playground._src.wrapper.wrap_for_brax_training` | `BraxDomainRandomizationVmapWrapper` (one model per env, fixed for the run, swapped into `env._mjx_model` while tracing) → `EpisodeWrapper` → `BraxAutoResetWrapper(full_reset=False)` (F16) |
+| `mujoco_playground._src.locomotion.go1.randomize.domain_randomize(model, rng[N])` | returns (batched model, in_axes); touches floor friction, frictionloss, armature, trunk CoM, masses, qpos0; not damping or actuator gains, so it works on our explicit-PD model |
+| `flax.linen.GRUCell(features)` | `carry, y = cell(carry, x)`; input kernels `ir, iz, in` with bias, recurrent `hr, hz` without, `hn` with bias: 3·h·(in + h) + 4h params |
+| `optax.chain(clip_by_global_norm, adam)`, `optax.tree.norm` | `optax.global_norm` is deprecated in 0.2.8 |
+| `flax.serialization.to_bytes / from_bytes` | checkpoints (params + normalizer) |

@@ -28,5 +28,5 @@ Instance requirements for session S (jobs run one at a time on one GPU):
 **If the GPU machine dies mid-session:** finished runs are already on the laptop (pulled every
 5 min); only the run in progress is lost (≈ 20–30 min of GPU time). Restart on a new machine:
 `push_code.sh <session commit>` (the commit in `runs/_ledger.jsonl`; run ids include it, so
-another commit would retrain everything), `push_runs.sh`, `bootstrap.sh`, then relaunch the same
+another commit would retrain everything), `push_runs.sh <session commit>`, `bootstrap.sh`, then relaunch the same
 sweep file. Finished runs are skipped, the interrupted one is retrained.

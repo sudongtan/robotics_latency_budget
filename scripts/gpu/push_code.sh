@@ -11,7 +11,7 @@ if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
   exit 1
 fi
 echo "push_code: $(git rev-parse --short HEAD) -> $GPU_HOST:$GPU_DIR"
-ssh "$GPU_HOST" "mkdir -p '$GPU_DIR'"
+"${SSH[@]}" "$GPU_HOST" "mkdir -p '$GPU_DIR'"
 rsync "${RSYNC_FLAGS[@]}" --delete \
   --exclude '.venv/' --exclude 'runs/' --exclude 'notes/' --exclude 'CLAUDE.md' \
   --exclude '.git-private/' --exclude 'wandb/' --exclude 'outputs/' --exclude 'multirun/' \

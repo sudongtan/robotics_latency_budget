@@ -14,7 +14,7 @@ pull() { rsync "${RSYNC_FLAGS[@]}" "$GPU_HOST:$GPU_DIR/runs/" runs/; }
 verify() {
   # Dry run with checksums: lists any file that still differs from the box.
   local pending
-  pending="$(rsync -anc --out-format='%n' "$GPU_HOST:$GPU_DIR/runs/" runs/ | grep -v '/$' || true)"
+  pending="$(rsync "${RSYNC_FLAGS[@]}" -nc --out-format='%n' "$GPU_HOST:$GPU_DIR/runs/" runs/ | grep -v '/$' || true)"
   if [[ -n "$pending" ]]; then
     echo "sync_down: NOT verified; still differing:" >&2
     echo "$pending" >&2

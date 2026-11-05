@@ -37,6 +37,21 @@ from latrl.envs.go1 import ENV_NAME, make_env
 from latrl.utils.provenance import git_commit, write_run_meta
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
+
+
+def _install_jax_compat() -> None:
+    """brax 0.14.2's PPO calls `jax.device_put_replicated`, which jax 0.12 removed (F23).
+    Equivalent for pmap inputs: one stacked copy per device, sharded by pmap itself.
+    Only this reference script needs it; our PPO does not use pmap."""
+    if "device_put_replicated" in dir(jax):
+        return
+
+    def device_put_replicated(x, devices):
+        return jax.tree.map(lambda a: jax.numpy.stack([jax.numpy.asarray(a)] * len(devices)), x)
+
+    jax.device_put_replicated = device_put_replicated
+
+
 DEFAULTS = {"seed": 0, "env": "ours", "prefix": "", "runs_dir": "runs"}
 # Brax keys that may be overridden from the CLI (scale only, for Mac smoke tests).
 SCALE_KEYS = (
@@ -68,12 +83,13 @@ def _make(which: str, env_cfg):
 
 
 def main() -> None:
+    _install_jax_compat()
     args = OmegaConf.merge(DEFAULTS, OmegaConf.from_cli())
     env_cfg = _env_cfg()
     rl = locomotion_params.brax_ppo_config(ENV_NAME, impl=env_cfg.impl)
     for k in SCALE_KEYS:
         if k in args:
-            rl[k] = type(rl[k])(float(args[k]))
+            rl[k] = int(float(args[k]))  # all scale keys are integers
     sha, dirty = git_commit()
     run_id = f"{args.prefix}brax_{args.env}_s{args.seed}_{sha}"
     run_dir = ROOT / args.runs_dir / run_id
@@ -102,7 +118,11 @@ def main() -> None:
         eval_f.flush()
         print(
             step,
-            {k: round(v, 4) for k, v in row.items() if k.startswith("eval/episode_r")},
+            {
+                k: round(v, 4)
+                for k, v in row.items()
+                if k in ("eval/episode_reward", "eval/avg_episode_length")
+            },
             flush=True,
         )
 

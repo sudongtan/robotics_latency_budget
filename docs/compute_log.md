@@ -25,6 +25,11 @@ Instance requirements for session S (jobs run one at a time on one GPU):
 | Rental type | on-demand, SSH as root | no bucket: results exist only on the box until pulled (D9) |
 | Laptop | awake and on power for the whole session, ≈ 3 GB free | `sync_down.sh --watch` pulls results every 5 min |
 
+**Monitoring:** `scripts/gpu/health.py --watch 300` runs on the laptop next to the result pulls
+and alerts (terminal + macOS notification + `runs/_health.log`) on low disk or memory on either
+machine, an idle GPU, failed or stalled jobs, the gate result, a dead sweep runner, an unreachable
+GPU machine, or pulls that stopped.
+
 **If the GPU machine dies mid-session:** finished runs are already on the laptop (pulled every
 5 min); only the run in progress is lost (≈ 20–30 min of GPU time). Restart on a new machine:
 `push_code.sh <session commit>` (the commit in `runs/_ledger.jsonl`; run ids include it, so

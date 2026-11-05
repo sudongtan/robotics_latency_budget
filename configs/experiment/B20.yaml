@@ -1,0 +1,8 @@
+# @package _global_
+# B: specialist, fixed 20 ms action delay.
+defaults:
+  - override /policy: mlp
+experiment: {name: B20}
+env:
+  latency:
+    action: {lo: 5, hi: 5}

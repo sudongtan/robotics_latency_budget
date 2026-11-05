@@ -5,6 +5,8 @@ defaults:
   - ppo: default
   - policy: mlp
   - experiment: A
+  - override hydra/job_logging: none    # no train.log in the repo root
+  - override hydra/hydra_logging: none
   - _self_
 
 seed: 0

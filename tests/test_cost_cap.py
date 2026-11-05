@@ -20,8 +20,11 @@ def _setup(tmp_path, rate):
     sweep.write_text(
         "jobs:\n"
         '  - {step: "uv run python scripts/gpu/cost_cap.py X @LOGDIR@/impl --max-hours 1"}\n'
+        "  - {tier: 0}\n"
         '  - {experiment: A, seeds: [0, 1], overrides: ["env.impl=@IMPL@"]}\n'
+        "  - {tier: 1}\n"
         '  - {experiment: E, seeds: [0], overrides: ["env.impl=@IMPL@"]}\n'
+        "  - {tier: 2}\n"
         '  - {script: scripts/brax_reference.py, seeds: [0], overrides: ["env=ours"]}\n'
     )
     return runs, sweep
@@ -48,14 +51,31 @@ def _run(tmp_path, runs, sweep, max_hours):
     return r.returncode, json.loads((tmp_path / "cost_cap.json").read_text())
 
 
-def test_projection_and_cap(tmp_path):
+GRID = 82 * 256 * 1000
+H_A = (2e8 + GRID) / 200e3 / 3600 + 1.5 / 60  # one MLP run at 200k steps/s
+H_E = 1.5 * (2e8 + GRID) / 200e3 / 3600 + 1.5 / 60
+H_B = 2e8 / 200e3 / 3600 + 1.5 / 60
+
+
+def test_all_tiers_fit(tmp_path):
     runs, sweep = _setup(tmp_path, rate=200e3)
     code, rec = _run(tmp_path, runs, sweep, max_hours=100)
-    assert code == 0 and rec["pass"] and rec["jobs_remaining"] == 4
-    grid = 82 * 256 * 1000
-    expect = ((2 * (2e8 + grid) + 1.5 * (2e8 + grid) + 2e8) / 200e3 / 3600) + 4 * 1.5 / 60
-    assert abs(rec["projected_hours"] - expect) < 1e-6
-    code, rec = _run(tmp_path, runs, sweep, max_hours=1)
+    assert code == 0 and rec["pass"] and rec["stop_before_tier"] is None
+    assert abs(rec["projected_hours_all"] - (2 * H_A + H_E + H_B)) < 1e-6
+    assert not (tmp_path / "stop_before_tier").exists()
+
+
+def test_cap_trims_whole_tiers(tmp_path):
+    runs, sweep = _setup(tmp_path, rate=200e3)
+    cap = 2 * H_A + H_E + 0.01  # tiers 0 and 1 fit, tier 2 does not
+    code, rec = _run(tmp_path, runs, sweep, max_hours=cap)
+    assert code == 0 and rec["runs_tiers"] == [0, 1] and rec["stop_before_tier"] == 2
+    assert (tmp_path / "stop_before_tier").read_text() == "2"
+
+
+def test_nothing_fits_stops(tmp_path):
+    runs, sweep = _setup(tmp_path, rate=200e3)
+    code, rec = _run(tmp_path, runs, sweep, max_hours=0.1)
     assert code == 1 and not rec["pass"]
 
 
@@ -65,4 +85,11 @@ def test_finished_runs_are_not_counted(tmp_path):
     done.mkdir()
     (done / "DONE").write_text("{}")
     code, rec = _run(tmp_path, runs, sweep, max_hours=100)
-    assert rec["jobs_remaining"] == 3 and rec["jobs_already_done"] == 1
+    assert rec["jobs_already_done"] == 1 and rec["tiers"]["0"]["jobs"] == 1
+
+
+def test_env_var_overrides_cap(tmp_path, monkeypatch):
+    runs, sweep = _setup(tmp_path, rate=200e3)
+    monkeypatch.setenv("COST_CAP_HOURS", "100")
+    code, rec = _run(tmp_path, runs, sweep, max_hours=0.1)  # flag says 0.1 h
+    assert code == 0 and rec["max_hours"] == 100 and rec["stop_before_tier"] is None

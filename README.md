@@ -103,7 +103,10 @@ bash scripts/gpu/sync_down.sh --watch                            # laptop: pull 
 ```
 
 The sweep runs a speed benchmark, the comparison with Brax PPO, an automatic pass/fail check
-([`scripts/gpu/gate.py`](scripts/gpu/gate.py)), then the main experiments and ablations.
+([`scripts/gpu/gate.py`](scripts/gpu/gate.py)), then the experiments in priority order: first
+every condition needed for the hypotheses at 5 seeds, then extra seeds, then reference and
+exploratory runs. If the session is cut short, or the measured speed means the budget only
+covers part of it, the most important results are complete.
 It survives losing the GPU machine: finished runs are listed in `runs/_ledger.jsonl` and skipped
 when the sweep is relaunched on a new machine (`scripts/gpu/push_runs.sh <commit>`), so at most the
 run in progress is repeated.

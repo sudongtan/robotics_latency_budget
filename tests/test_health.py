@@ -90,6 +90,12 @@ def test_failed_job_is_info_gate_failure_is_alert():
     assert any("sweep done" in i for i in infos)
 
 
+def test_tier_skip_is_reported():
+    st = STATUS + ["x SKIPPING tier 3 and later (cost cap)", "x SWEEP DONE"]
+    (alerts, infos, _), _ = run(probe(status=st, runner=0.0))
+    assert alerts == set() and any("SKIPPING tier 3" in i for i in infos)
+
+
 def test_gate_pass_reported_once():
     st = STATUS + ["x start 3 [GATE]: gate", "x ok 3"]
     (_, infos, _), state = run(probe(status=st))

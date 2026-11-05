@@ -130,6 +130,8 @@ def assess(probe: dict | None, mac: dict, state: dict, lim: Limits) -> tuple[set
             alerts.add(f"sweep stopped: {line}")
         elif "FAILED(" in line:
             infos.append(f"job failed (queue continues): {line}")
+        elif "SKIPPING tier" in line:
+            infos.append(f"cost cap: {line.split(' ', 1)[1]}")
         elif "SWEEP DONE" in line:
             infos.append("sweep done: run the final sync_down.sh and verify")
     gate_lines = [s for s in status if "[GATE]" in s]

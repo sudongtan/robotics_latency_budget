@@ -25,6 +25,19 @@ Instance requirements for session S (jobs run one at a time on one GPU):
 | Rental type | on-demand, SSH as root | no bucket: results exist only on the box until pulled (D9) |
 | Laptop | awake and on power for the whole session, ≥ 10 GB free | `sync_down.sh --watch` pulls results every 5 min |
 
+**Priority tiers** (if the session is cut, the most important results already exist):
+
+| Stopped after (≈ cumulative h) | Analyzable |
+|---|---|
+| calibration + gate (3 h) | our PPO vs Brax PPO; one-seed pilot curves |
+| 3 seeds of the core conditions (10 h) | every pre-registered hypothesis, wide CIs |
+| core conditions incl. observation-delay runs at 5 seeds (16 h) | all hypotheses at 5 seeds |
+| main comparisons at 10 seeds (23 h) | the pre-registered seed counts |
+| fixed-delay specialists (28 h) | + reference curves |
+| exploratory ablations (36 h) | + motor-lag transfer, history length |
+
+The cost cap runs only the tiers that fit in its budget (50 h) at the measured speed.
+
 **Monitoring:** `scripts/gpu/health.py --watch 300` runs on the laptop next to the result pulls
 and alerts (terminal + macOS notification + `runs/_health.log`) on low disk or memory on either
 machine, an idle GPU, failed or stalled jobs, the gate result, a dead sweep runner, an unreachable

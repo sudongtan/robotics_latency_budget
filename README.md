@@ -66,7 +66,25 @@ Current state: simulation layer complete; next is the PPO implementation (Phase 
 Python, JAX, Flax, MuJoCo / MJX, MuJoCo Playground, Hydra, Weights & Biases, rliable.
 Development and analysis run on a laptop (Apple Silicon); only training runs on rented GPUs.
 
+## Running it
+
+Requires [uv](https://docs.astral.sh/uv/) and macOS (Apple Silicon) or Linux.
+
+```bash
+uv sync                                         # install pinned dependencies
+uv run pytest -q                                # 58 tests: delays, no future leakage, parity
+uv run python scripts/delay_feedback_demo.py    # demo video -> runs/phase1_delay_demo_*/
+scripts/mjpython.sh scripts/view_env.py         # macOS: interactive viewer of the robot model
+```
+
+Training and evaluation commands will be added as Phase 2 lands.
+
 ## Repository guide
 
 - `docs/` — pre-registration, environment notes, compute log, results (as they are written).
-- `src/latrl/`, `scripts/`, `configs/` — code (as it lands).
+- `src/latrl/envs/` — the simulation layer: `latency.py` (delay buffers), `actuator.py`
+  (motor control and motor lag), `go1.py` (the robot environment with delays added),
+  `specs.py` (observation layout and delay settings shared by all code).
+- `configs/` — all settings (Hydra); no hard-coded numbers in code.
+- `scripts/` — runnable entry points. `tests/` — the test suite.
+- `runs/` — every result, with its config, commit hash and seed.

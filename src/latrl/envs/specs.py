@@ -73,6 +73,8 @@ class ActuatorSpec:
 
 @dataclasses.dataclass(frozen=True)
 class EnvSpec:
+    """Everything the MJX and native envs must agree on beyond the obs layout (R10)."""
+
     action_delay: DelaySpec  # substeps
     obs_delay: DelaySpec  # control steps
     actuator: ActuatorSpec

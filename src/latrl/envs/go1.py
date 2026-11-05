@@ -73,6 +73,17 @@ class LatencyState:
 
 
 class LatencyJoystick(joystick.Joystick):
+    """Playground's Go1 joystick task with action delay, observation delay and motor lag.
+
+    Each control step: the policy action enters the action delay line; physics runs
+    `n_substeps` substeps, each applying the newest arrived target through the actuator
+    (explicit PD + lag, or the model's position actuators); then upstream's reward,
+    termination and command bookkeeping run unchanged; finally the measured proprio enters
+    the observation delay line and the policy sees the newest arrived one. Last action and
+    command are never delayed (D10, D16). Delays are sampled per episode at reset and live
+    in `state.info["latency"]` (R3); `with_latency` pins them for tests and evaluation.
+    """
+
     def __init__(
         self,
         spec: EnvSpec,

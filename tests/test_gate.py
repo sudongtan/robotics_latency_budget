@@ -109,9 +109,12 @@ def test_session_sweep_expands():
     sweep = _load("sweep")
     cmds = sweep.commands(str(ROOT / "configs" / "sweeps" / "session_s.yaml"))
     kinds = [c.split()[0] for c in cmds]
-    assert kinds.count("GATE") == 1 and kinds.count("STEP") == 1
+    assert kinds.count("GATE") == 1 and kinds.count("STEP") == 2
     gate_i, step_i = kinds.index("GATE"), kinds.index("STEP")
-    assert step_i < gate_i
+    pick, cap = (i for i, k in enumerate(kinds) if k == "STEP")
+    assert "pick_backend" in cmds[pick] and "cost_cap" in cmds[cap]
+    first_calibration = next(i for i, c in enumerate(cmds) if "brax_reference" in c)
+    assert pick < cap < first_calibration < gate_i  # cap stops the queue before calibration
     before = " ".join(cmds[:gate_i])
     for name in (
         "experiment=A seed=0",

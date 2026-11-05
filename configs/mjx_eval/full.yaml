@@ -14,7 +14,7 @@ t_m_ms: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]   # motor time consta
 fall: {min_height: 0.15, min_upz: 0.5}    # D17: trunk z < 0.15 m or tilt > 60°
 traces:
   enabled: false              # the sweep turns this on for the runs used in probing
-  episodes: 32
+  episodes: 128               # Q17/D35: 32 gave too few latency draws per probe fold
   latency: {lo: 0, hi: 20}    # action delay U{0..80 ms} for every condition (A too: H6 control)
   sets:                       # plan step 30: latency only / latency + dynamics / jitter (time-resolved)
     - {name: lat, domain_randomization: false, jitter: false}

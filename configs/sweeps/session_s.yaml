@@ -1,5 +1,5 @@
 # Session S (D27, D29): the single GPU rental. Generated once by hand-run script; edit with care.
-# Order: backend bench -> pick backend -> calibration -> GATE -> main sweep -> ablations.
+# Order: backend bench -> pick backend -> cost cap -> calibration -> GATE -> main sweep -> ablations.
 # Calibration's A s0-1 and C/D/E s0 use the frozen config, so they count as main-sweep runs.
 # Main and ablation jobs are interleaved by seed: an early stop leaves balanced seed counts.
 # Traces (H6 probing) on seeds 0-4 of A, C, D, E, F.
@@ -8,6 +8,8 @@ jobs:
   - {experiment: A, seeds: [0], overrides: ["env.impl=jax", "train.total_steps=2e7", "train.num_evals=1", "mjx_eval.enabled=false", "train.run_prefix=bench_jax_"]}
   - {experiment: A, seeds: [0], overrides: ["env.impl=warp", "train.total_steps=2e7", "train.num_evals=1", "mjx_eval.enabled=false", "train.run_prefix=bench_warp_"]}
   - {step: "uv run python scripts/gpu/pick_backend.py @LOGDIR@/impl"}
+  # Cost cap (Q17, D35): project remaining hours from the measured speed; stop if over the cap.
+  - {step: "uv run python scripts/gpu/cost_cap.py configs/sweeps/session_s.yaml @LOGDIR@/impl --max-hours 50"}
   # --- 1. calibration (plan step 15)
   - {script: scripts/brax_reference.py, seeds: [0, 1], overrides: ["env=ours", "impl=@IMPL@"]}
   - {experiment: A, seeds: [0, 1], overrides: ["env.impl=@IMPL@", "mjx_eval.traces.enabled=true"]}

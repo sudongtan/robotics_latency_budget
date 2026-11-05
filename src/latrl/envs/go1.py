@@ -8,9 +8,9 @@ command sampling and observation noise are upstream's. What changes:
    damping. We loop over substeps ourselves so that
    - the target applied at each substep comes from the action delay line (resolution one
      substep = 4 ms; D14 semantics under jitter), and
-   - in `explicit_pd` mode (D11) the whole PD torque is computed here, low-pass filtered
-     (motor lag), and clipped to the torque limit. The model's actuators become plain
-     torque motors (gain 1, no bias) and `dof_damping` is 0.
+   - in `explicit_pd` mode (D11) the whole PD torque is computed here, toward a low-pass
+     filtered target (actuator lag, D33), and clipped to the torque limit. The model's
+     actuators become plain torque motors (gain 1, no bias) and `dof_damping` is 0.
 2. **Observation** (`_policy_obs`). The proprioceptive part goes through the observation
    delay line. `last_act` holds the action just sent (D10, D16), undelayed. The command is
    undelayed.
@@ -67,7 +67,7 @@ class LatencyState:
     alpha: jax.Array
     actions: latency.DelayLine  # policy outputs [K_a, 12]
     obs: latency.DelayLine  # proprioceptive obs [K_o, 33]
-    tau: jax.Array  # delivered motor torque, lag-filter state [12]
+    q_lag: jax.Array  # lagged joint target the PD loop tracks, lag-filter state [12] (D33)
     applied_targets: jax.Array  # joint targets used at each substep of the last step [n_sub, 12]
     applied_torque: jax.Array  # actuator torque delivered at each substep of the last step
 
@@ -150,8 +150,8 @@ class LatencyJoystick(joystick.Joystick):
             # Zero action = default pose, as upstream's reset ctrl.
             actions=latency.init(jp.zeros(NUM_ACTIONS), self._k_act),
             obs=latency.init(state.obs["state"][PROPRIO], self._k_obs),
-            # At reset joints are at the target with zero velocity, so the PD torque is 0.
-            tau=jp.zeros(NUM_ACTIONS),
+            # At reset the joints rest at the default pose, which is also the target.
+            q_lag=self._default_pose,
             applied_targets=jp.broadcast_to(self._default_pose, (self.n_substeps, NUM_ACTIONS)),
             applied_torque=jp.zeros((self.n_substeps, NUM_ACTIONS)),
         )
@@ -192,22 +192,24 @@ class LatencyJoystick(joystick.Joystick):
         kp, kd = self._config.Kp, self._config.Kd
 
         def substep(carry, i):
-            data, tau = carry
+            data, q_lag = carry
+            # Delayed target (what the action delay line delivers at this substep).
             q_target = self._default_pose + latency.read(actions, i) * self._config.action_scale
             if explicit:
                 q_target = jp.clip(q_target, self._q_lo, self._q_hi)
-                tau_cmd = actuator.pd_torque(q_target, data.qpos[7:], data.qvel[6:], kp, kd)
-                tau = actuator.lag_step(tau, tau_cmd, lat.alpha)
+                # Actuator lag on the target, then the PD loop (D33): stable for any T_m.
+                q_lag = actuator.lag_step(q_lag, q_target, lat.alpha)
+                tau = actuator.pd_torque(q_lag, data.qpos[7:], data.qvel[6:], kp, kd)
                 ctrl = jp.clip(tau, -self._tau_max, self._tau_max)
             else:  # upstream position servo; MuJoCo clips ctrl to the joint range
                 ctrl = q_target
             data = mjx.step(self.mjx_model, data.replace(ctrl=ctrl))
-            return (data, tau), (q_target, data.actuator_force)
+            return (data, q_lag), (q_target, data.actuator_force)
 
-        (data, tau), (targets, torques) = jax.lax.scan(
-            substep, (data, lat.tau), jp.arange(self.n_substeps)
+        (data, q_lag), (targets, torques) = jax.lax.scan(
+            substep, (data, lat.q_lag), jp.arange(self.n_substeps)
         )
-        return data, tau, targets, torques
+        return data, q_lag, targets, torques
 
     def _policy_obs(
         self, raw: dict[str, jax.Array], proprio: jax.Array, last_act: jax.Array
@@ -230,7 +232,7 @@ class LatencyJoystick(joystick.Joystick):
         obs_delay = latency.effective(lat.obs_base, obs_offset, o.max)
         actions = latency.push(lat.actions, action, action_delay, elapsed=self.n_substeps)
 
-        data, tau, targets, torques = self._physics(state.data, lat, actions)
+        data, q_lag, targets, torques = self._physics(state.data, lat, actions)
 
         # --- upstream Joystick.step bookkeeping (mujoco_playground 0.2.0) -----------
         contact = jp.array(
@@ -291,7 +293,7 @@ class LatencyJoystick(joystick.Joystick):
             obs_delay=obs_delay,
             actions=actions,
             obs=obs_line,
-            tau=tau,
+            q_lag=q_lag,
             applied_targets=targets,
             applied_torque=torques,
         )

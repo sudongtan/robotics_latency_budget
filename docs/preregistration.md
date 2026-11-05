@@ -5,7 +5,7 @@ after this point (project rule R6); later notes go in that section, labeled.
 
 ## Freeze
 
-- Hypotheses frozen at commit: *(pending)*
+- Hypotheses frozen at commit: `c29e780`
 - Date: 2026-11-05
 
 ## 1. Question

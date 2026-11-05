@@ -21,9 +21,9 @@ Instance requirements for session S (jobs run one at a time on one GPU):
 | NVIDIA driver | recent (CUDA 12 capable); `bootstrap.sh` stops if JAX does not see the GPU | `jax[cuda12]` wheels bring their own CUDA libraries |
 | CPU | 4–8 vCPUs | training is GPU-bound; CPU does XLA compilation (≈ 1–2 min per job) and Python |
 | RAM | ≥ 32 GB (16 GB minimum) | CUDA/XLA runtime and compilation; traces (≈ 50 MB per set) pass through host memory |
-| Disk | ≥ 50 GB | venv + CUDA wheels ≈ 7 GB, uv cache ≈ 7 GB, Go1 assets (menagerie) 2 GB, results ≈ 3 GB (checkpoints 1.6 MB × 10 × 98 runs, traces ≈ 1.1 GB) |
+| Disk | ≥ 50 GB | venv + CUDA wheels ≈ 7 GB, uv cache ≈ 7 GB, Go1 assets (menagerie) 2 GB, results ≈ 7 GB (checkpoints 1.6 MB × 10 × 98 runs, probing traces ≈ 4.5 GB: 128 episodes × 3 sets × 25 runs) |
 | Rental type | on-demand, SSH as root | no bucket: results exist only on the box until pulled (D9) |
-| Laptop | awake and on power for the whole session, ≈ 3 GB free | `sync_down.sh --watch` pulls results every 5 min |
+| Laptop | awake and on power for the whole session, ≥ 10 GB free | `sync_down.sh --watch` pulls results every 5 min |
 
 **Monitoring:** `scripts/gpu/health.py --watch 300` runs on the laptop next to the result pulls
 and alerts (terminal + macOS notification + `runs/_health.log`) on low disk or memory on either

@@ -24,3 +24,9 @@ Instance requirements for session S (jobs run one at a time on one GPU):
 | Disk | ≥ 50 GB | venv + CUDA wheels ≈ 7 GB, uv cache ≈ 7 GB, Go1 assets (menagerie) 2 GB, results ≈ 3 GB (checkpoints 1.6 MB × 10 × 98 runs, traces ≈ 1.1 GB) |
 | Rental type | on-demand, SSH as root | no bucket: results exist only on the box until pulled (D9) |
 | Laptop | awake and on power for the whole session, ≈ 3 GB free | `sync_down.sh --watch` pulls results every 5 min |
+
+**If the GPU machine dies mid-session:** finished runs are already on the laptop (pulled every
+5 min); only the run in progress is lost (≈ 20–30 min of GPU time). Restart on a new machine:
+`push_code.sh <session commit>` (the commit in `runs/_ledger.jsonl`; run ids include it, so
+another commit would retrain everything), `push_runs.sh`, `bootstrap.sh`, then relaunch the same
+sweep file. Finished runs are skipped, the interrupted one is retrained.

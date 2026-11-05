@@ -200,3 +200,48 @@ and in tests.
 | `flax.linen.GRUCell(features)` | `carry, y = cell(carry, x)`; input kernels `ir, iz, in` with bias, recurrent `hr, hz` without, `hn` with bias: 3·h·(in + h) + 4h params |
 | `optax.chain(clip_by_global_norm, adam)`, `optax.tree.norm` | `optax.global_norm` is deprecated in 0.2.8 |
 | `flax.serialization.to_bytes / from_bytes` | checkpoints (params + normalizer) |
+
+## Training and evaluation pipeline (Phase 2)
+
+Reference for `src/latrl/ppo/`, `src/latrl/policies/`, `src/latrl/eval/`. Decisions behind each
+point are in the project log (D20–D30).
+
+**Per training iteration** (`Trainer.iteration`): 8192 envs × 20 control steps are collected with
+the current policy; finished episodes (upstream termination = upside down, or the 1000-step time
+limit) are reset with a full `env.reset`, which resamples the per-episode latency. The observation
+normalizer is updated, then 4 epochs × 32 minibatches of whole 20-step per-env sequences. Value
+targets are GAE λ-returns; the policy advantage is Brax's (`r + γ·vs' − V`); time-limit
+truncations bootstrap from the value of the true final state.
+
+**What the actor sees** (`policies/inputs.py`):
+
+| Policy config | Conditions | Input | Size |
+|---|---|---|---|
+| `mlp` | A, B, C | `obs["state"]` | 48 |
+| `history` (`history2`, `history8`) | D (D-H ablation) | last 4 (2, 8) `obs["state"]` frames, newest first | 192 (96, 384) |
+| `gru` | E | `obs["state"]`, GRU(168) memory | 48 |
+| `privileged` | F | `obs["state"]` + [action delay / 30, obs delay / 6] | 50 |
+
+The critic sees `privileged_state` (123) in every condition and never the latency. Actor
+parameter counts: 192,408 (MLP), 194,296 (history 4), 191,568 (history 2), 192,652 (history 8),
+188,792 (GRU), 193,432 (privileged).
+
+**Domain randomization:** one randomized model per training env for the whole run (Playground's
+`domain_randomize`); eval uses its own fixed draws.
+
+**Evaluation grid** (`eval/mjx_eval.py`, `configs/mjx_eval/full.yaml`), after training, in the
+same job: action delay 0–30 substeps (0–120 ms) with jitter off and on (offset U{−3..3} substeps,
+resampled with p = 0.1 per step), obs delay 0–6 steps, T_m 0–60 ms every 5 ms; 256 episodes per
+cell, deterministic policy, noise and domain randomization on. One fixed eval seed: every cell of
+every run uses the same initial states, commands and randomized models.
+
+Per-episode columns of `eval_mjx.parquet`: `fell` / `fall_step` (trunk z < 0.15 m or tilt > 60°),
+`return`, `lin_err`, `yaw_err`, `cot`, `jerk`, `duty_factor`, `step_freq_hz`, `apex_m`,
+`stance_width_m`, plus the cell settings (`action_delay` in substeps, `obs_delay` in steps, `t_m_s`,
+`jitter`; `*_ms` columns for display). Rate metrics skip the first 0.5 s and post-fall steps and are
+NaN when nothing is left. Optional traces (`runs/<id>/traces/{lat,lat_dyn,lat_jitter}.npz`, float16,
+[episode, step, …]): `obs`, `features` (actor's last hidden layer), `hidden` (GRU state), `action`,
+`action_delay`, `obs_delay`, `alive`, `qpos`, `qvel`, `contact`, `command`, `feet_pos`.
+
+**MJX backends:** our wrapper runs on `impl=jax` and `impl=warp`. Under warp some batched-state
+leaves have no per-env axis; the per-env reset select passes them through (as Playground does).

@@ -7,7 +7,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 export PATH="$HOME/.local/bin:$PATH"
-export MUJOCO_GL="${MUJOCO_GL:-egl}"
+# No MUJOCO_GL default: training does not render, and MUJOCO_GL=egl without libEGL makes
+# `import mujoco` fail. Set MUJOCO_GL=egl only for rendering jobs (CLAUDE.md).
 
 dry=0
 if [[ "${1:-}" == "--dry-run" ]]; then dry=1; shift; fi

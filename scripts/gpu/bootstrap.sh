@@ -7,7 +7,8 @@
 #     bash scripts/gpu/bootstrap.sh   # local test without a GPU (no CUDA extra, tiny smoke)
 set -euo pipefail
 cd "$(dirname "$0")/../.."
-export MUJOCO_GL="${MUJOCO_GL:-egl}"
+# No MUJOCO_GL default: training does not render, and MUJOCO_GL=egl without libEGL makes
+# `import mujoco` fail. Set MUJOCO_GL=egl only for rendering jobs (CLAUDE.md).
 export PATH="$HOME/.local/bin:$PATH"
 
 if ! command -v uv >/dev/null; then

@@ -127,3 +127,16 @@ def test_normalizer_matches_numpy():
     allx = np.concatenate(batches)
     np.testing.assert_allclose(np.asarray(s.mean), allx.mean(0), rtol=1e-5)
     np.testing.assert_allclose(np.asarray(s.std), allx.std(0), rtol=1e-4)
+
+
+@pytest.mark.parametrize("name", POLICIES)
+def test_step_features_matches_step(name):
+    actor, inp = _actor(name)
+    params = actor.init(jax.random.PRNGKey(0))
+    x = jax.random.normal(jax.random.PRNGKey(1), (3, inp.size))
+    h, first = actor.initial_carry(3), jp.ones(3, bool)
+    out, h1 = actor.step(params, x, h, first)
+    out2, h2, feats = actor.step_features(params, x, h, first)
+    np.testing.assert_array_equal(np.asarray(out), np.asarray(out2))
+    np.testing.assert_array_equal(np.asarray(h1), np.asarray(h2))
+    assert feats.shape == (3, actor.hidden[-1])

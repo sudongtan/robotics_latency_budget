@@ -24,6 +24,7 @@ import numpy as np
 from omegaconf import DictConfig, OmegaConf
 
 from latrl.envs.go1 import make_env
+from latrl.eval.mjx_eval import Evaluator
 from latrl.policies.networks import num_params
 from latrl.ppo import checkpoint
 from latrl.ppo.trainer import Trainer
@@ -133,7 +134,25 @@ def main(cfg: DictConfig) -> None:
             checkpoint.save(run_dir / "checkpoints" / f"it{it:06d}.msgpack", ts)
     metrics_f.close()
     eval_f.close()
-    (run_dir / "DONE").write_text(json.dumps({"wall_s": time.time() - t0, "iterations": n_iter}))
+    t_trained = time.time() - t0
+
+    # In-job MJX eval grid + traces (Phase 2b). Fixed eval seed: same episodes for every run.
+    timing = {"train_wall_s": t_trained, "iterations": n_iter}
+    if cfg.mjx_eval.enabled:
+        evaluator = Evaluator(trainer, cfg.env, cfg.mjx_eval)
+        k_grid, k_traces = jax.random.split(jax.random.PRNGKey(int(cfg.mjx_eval.seed)))
+        te = time.time()
+        df = evaluator.run(ts, k_grid, run_id=run_id)
+        df.to_parquet(run_dir / "eval_mjx.parquet")
+        timing["eval_grid_s"] = time.time() - te
+        print(f"eval grid: {len(df)} episodes in {timing['eval_grid_s']:.0f}s", flush=True)
+        if cfg.mjx_eval.traces.enabled:
+            te = time.time()
+            (run_dir / "traces").mkdir()
+            for name, record in evaluator.traces(k_traces).items():
+                np.savez_compressed(run_dir / "traces" / f"{name}.npz", **record(ts))
+            timing["traces_s"] = time.time() - te
+    (run_dir / "DONE").write_text(json.dumps(timing | {"wall_s": time.time() - t0}))
     if wb:
         wb.finish()
 

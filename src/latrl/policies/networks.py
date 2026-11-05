@@ -36,6 +36,9 @@ class MLP(nn.Module):
     def __call__(self, x: jax.Array) -> jax.Array:
         for w in self.hidden:
             x = nn.swish(nn.Dense(w, kernel_init=_KERNEL_INIT)(x))
+        # Last hidden layer, recorded only when applied with mutable=["intermediates"]
+        # (probing targets, plan step 30); no parameters, no effect otherwise.
+        self.sow("intermediates", "features", x)
         return nn.Dense(self.out, kernel_init=_KERNEL_INIT)(x)
 
 
@@ -89,6 +92,17 @@ class Actor:
         h = jp.where(is_first[:, None], 0.0, h)
         h, out = self._module().apply(params, h, x)
         return out, h
+
+    def step_features(
+        self, params: Any, x: jax.Array, h: jax.Array, is_first: jax.Array
+    ) -> tuple[jax.Array, jax.Array, jax.Array]:
+        """`step` that also returns the last hidden layer [N, hidden[-1]] (probing)."""
+        if self.arch == "mlp":
+            out, st = self._module().apply(params, x, mutable=["intermediates"])
+            return out, h, st["intermediates"]["features"][0]
+        h = jp.where(is_first[:, None], 0.0, h)
+        (h, out), st = self._module().apply(params, h, x, mutable=["intermediates"])
+        return out, h, st["intermediates"]["head"]["features"][0]
 
     def sequence(self, params: Any, x: jax.Array, h0: jax.Array, is_first: jax.Array) -> jax.Array:
         if self.arch == "mlp":

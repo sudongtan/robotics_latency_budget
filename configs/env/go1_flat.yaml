@@ -1,0 +1,18 @@
+# Go1 joystick on flat terrain (Playground Go1JoystickFlatTerrain) + our latency/actuator layer.
+# Experiments override `latency` and `actuator`; everything else is shared by all conditions.
+name: Go1JoystickFlatTerrain
+impl: jax                    # Mac CPU (CLAUDE.md); GPU choice made in Phase 2
+noise_level: 1.0             # upstream sensor noise on (D15)
+domain_randomization: true   # upstream randomize.py, applied by the training loop (D15)
+
+latency:
+  # Action delay in physics substeps (1 substep = 4 ms). max sizes the buffer: 30 = 120 ms,
+  # the largest eval latency.
+  action: {lo: 0, hi: 0, max: 30, jitter_p: 0.0, jitter_width: 0}
+  # Observation delay in control steps (1 step = 20 ms).
+  obs: {lo: 0, hi: 0, max: 6, jitter_p: 0.0, jitter_width: 0}
+
+actuator:
+  mode: explicit_pd          # D11; "position" = upstream servos, for parity tests only
+  tm_lo: 0.0                 # motor time constant T_m ~ U[tm_lo, tm_hi], seconds
+  tm_hi: 0.0

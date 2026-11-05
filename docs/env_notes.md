@@ -51,16 +51,18 @@ So action latency in substeps has 4 ms resolution, matching the 4 ms eval grid.
    `Kp = 35` (set in `base.py` via `actuator_gainprm/biasprm`). `inheritrange=1` makes
    the ctrl range equal the joint range, so targets are clipped to joint limits.
 5. **Kd is not on the actuator.** `base.py` sets `dof_damping[6:] = Kd = 0.5`, i.e. passive
-   joint damping. With the Euler integrator, MuJoCo integrates joint damping
-   **implicitly**, which is more stable than an explicit `−Kd·q̇` torque.
+   joint damping. MuJoCo's Euler integrator would normally integrate joint damping
+   implicitly, but the Go1 XMLs set `<flag eulerdamp="disable"/>`, so here damping is
+   applied **explicitly** (`−Kd·q̇` from the start of the substep), as a plain torque would
+   be (F17).
 6. Actuator force is clipped by `forcerange`: ±23.7 N·m (hip abduction, thigh),
    ±35.55 N·m (knee).
 
 Implications for Phase 1 (explicit PD wrapper):
 - An explicit `τ = Kp(q* − q) − Kd·q̇` puts the damping inside the force clip, whereas the
-  original applies damping outside it (passive, unclipped, implicit). With Kd = 0.5 and
-  Δp = 4 ms the explicit damping should be numerically fine, but trajectories will not
-  match bit-for-bit; set the parity tolerance accordingly.
+  original applies damping outside it (passive, unclipped). Both integrate damping
+  explicitly (F17), so trajectories match to float32 rounding (~1e-6 rad) while no torque
+  saturates, and diverge only once one does (measured: F17).
 - For the actuator-lag model, whether Kd is lagged too (it is in a real motor driver) is a
   choice to record in `notes/log_decision.md` (Q2).
 
@@ -143,3 +145,37 @@ height or tilt threshold) on top of the env's termination; decide in Phase 2.
 - Interactive viewer confirmed by owner 2026-11-04 (via `scripts/mjpython.sh`).
 - Viewer: `scripts/mjpython.sh scripts/view_env.py`. Bare `uv run mjpython` fails with `Library not loaded: @rpath/libpython3.12.dylib` (uv's standalone Python keeps libpython in its own LIBDIR, which mjpython does not search); the wrapper sets `DYLD_FALLBACK_LIBRARY_PATH` to that LIBDIR.
 - Random actions ±1 make the robot fall within 200 steps (`done = 1`), as expected.
+
+## Our wrapper: `src/latrl/envs/go1.py` (Phase 1)
+
+`LatencyJoystick` subclasses Playground's `Joystick`; reward, termination, commands and
+noise are upstream's. Per control step (20 ms):
+
+1. The policy action `a_t` (12 numbers in [−1, 1]) is sent into the **action delay line**
+   with this step's delay `d_a` (substeps; D14 newest-arrived rule under jitter).
+2. For each of the 5 physics substeps `i`: take the newest arrived action, map it to a joint
+   target `q* = default_pose + 0.5·a`, clip to the joint range, compute
+   `τ_cmd = 35·(q* − q) − 0.5·q̇` from the current joint angle and velocity, low-pass it
+   with motor time constant `T_m`, clip to ±23.7 / ±35.55 N·m, and step MuJoCo with that
+   torque. (Model actuators are plain motors, gain 1; `dof_damping` = 0.)
+3. Upstream bookkeeping: contacts, obs (with noise), termination, reward, command resampling.
+4. The proprioceptive obs (0:33) goes into the **obs delay line** with delay `d_o` (control
+   steps); the policy gets the newest arrived one. `last_act` (33:45) = `a_t`; command
+   (45:48) undelayed. The critic's `privileged_state` starts with this delayed policy obs.
+
+Latency values are sampled in `reset` (`info["latency"]`); `with_latency` overrides them
+for eval sweeps. Config: `configs/env/go1_flat.yaml`; specs: `src/latrl/envs/specs.py`.
+
+Upstream behaviors found while building it (verified on mujoco_playground 0.2.0):
+- **Damping is explicit.** The Go1 XMLs set `<flag eulerdamp="disable"/>`, so MuJoCo
+  applies `dof_damping` as an explicit torque. Our explicit PD equals upstream to float
+  rounding unless a torque saturates (F17).
+- **`last_act` lags by one step upstream.** The obs is built before `info["last_act"]` is
+  updated, so the policy choosing `a_{t+1}` sees `a_{t−1}`. We put `a_t` there (D16).
+- **Auto-reset does not reset `info`.** `BraxAutoResetWrapper(full_reset=False)` restores
+  only `data` and `obs` from a cached first state; per-episode latency in `info` would
+  never be resampled (F16).
+- **Weak-typed metric.** `reward/termination` becomes weak-typed after the first step,
+  forcing one retrace of any jitted loop; our step casts metrics to float32 (F18).
+- **Reward clipped at 0.** Per-step reward is `clip(sum·dt, 0, ∞)`: a robot doing badly
+  gets 0, not a negative reward.

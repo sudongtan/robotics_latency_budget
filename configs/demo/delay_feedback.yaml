@@ -1,0 +1,15 @@
+# Phase 1 step 9 (D12): scripted 50 Hz feedback controller under action delay.
+# Controller: joint target q* = q_default + gain · (q_default − q_measured), i.e. a stiffer
+# posture hold using the *measured* (observed) joint angles. Gain chosen on the Mac so that
+# 0 ms is stable (F19); not a policy, no training.
+env: configs/env/go1_flat.yaml
+seed: 0
+gain: 1.25          # prototype sweep (F19): 1.0 -> only 80 ms falls; 1.5 -> 40 ms falls
+action_delays_ms: [0, 20, 40, 80]
+duration_s: 3.0
+push:                 # lateral force on the trunk
+  force_n: 30.0
+  start_s: 0.5
+  duration_s: 0.2
+fall_tilt_deg: 60.0   # trunk tilt counted as a fall (display only; Q4 still open)
+video: {width: 320, height: 240, camera: track, fps: 50}

@@ -397,7 +397,9 @@ class Trainer:
             perm = jax.random.permutation(k_perm, c.num_envs)
 
             def shard(x):
-                return x[perm].reshape((c.num_minibatches, -1) + x.shape[1:])
+                # Explicit sizes: the MLP's hidden state has size 0, so -1 is ambiguous.
+                mb = c.num_envs // c.num_minibatches
+                return x[perm].reshape((c.num_minibatches, mb) + x.shape[1:])
 
             mbs = (jax.tree.map(shard, data), shard(h0))
             return jax.lax.scan(minibatch, (params, opt_state, k), mbs)

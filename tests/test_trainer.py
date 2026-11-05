@@ -93,8 +93,9 @@ def test_loss_replays_rollout_log_probs(policy):
     np.testing.assert_allclose(np.asarray(logp), np.asarray(data.log_prob), rtol=1e-4, atol=1e-4)
 
 
-def test_iteration_traces_once_and_learns_something():
-    tr, models, in_axes, ts, carry = _trainer("gru")
+@pytest.mark.parametrize("policy", ["mlp", "history", "gru", "privileged"])
+def test_iteration_traces_once_and_learns_something(policy):
+    tr, models, in_axes, ts, carry = _trainer(policy)
     traces = 0
 
     def it(ts, carry):

@@ -51,15 +51,15 @@ The project asks:
 |---|---|
 | 0. Setup: environment, tooling, simulator running | Done: simulator runs and renders on laptop; environment documented; tooling and experiment tracking set up |
 | 1. Delay and motor-lag simulation, with tests | Done: action/observation delay (4 ms resolution, jitter), explicit motor control with motor lag; 58 tests incl. no-future-leakage and parity with the original simulator; demo video of a feedback controller failing at 80 ms delay |
-| 2. Own PPO implementation, validated against a reference | In progress (Mac part done): JAX PPO with MLP, history and GRU policies, matching the Playground/Brax reference setup; tested against NumPy and Brax references; all three policies learn in short laptop runs; GPU calibration moved into the single GPU session |
-| 3. Pre-registration of hypotheses | Not started |
+| 2. Own PPO implementation, validated against a reference | Laptop part done: JAX PPO with MLP, history and GRU policies, matching the Playground/Brax reference setup; tested against NumPy and Brax references; all three policies learn in short laptop runs; evaluation grid, gate and full GPU sweep built and rehearsed. Validation against Brax runs at the start of the single GPU session |
+| 3. Pre-registration of hypotheses | Done: hypotheses, success definition and decision rules frozen before any main-sweep run (`docs/preregistration.md`) |
 | 4. Main experiment sweep (GPU) | Not started |
 | 5. Evaluation and first results | Not started |
 | 6. Ablations | Not started |
 | 7. Analysis: cross-evaluation, probing, gait | Not started |
 | 8. Paper, videos, write-up | Not started |
 
-Current state: PPO implemented and smoke-tested on the laptop. All GPU work (calibration against Brax PPO, main sweep, ablations) will run in one rental; next is building and testing everything that rental runs on the laptop.
+Current state: everything the GPU session runs is built and rehearsed on the laptop, and the pre-registration is frozen. Next is the single GPU session: calibration against Brax PPO, an automatic gate, the main sweep and the ablations.
 
 ## Tech stack
 

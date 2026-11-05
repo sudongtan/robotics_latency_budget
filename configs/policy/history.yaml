@@ -1,0 +1,7 @@
+# Condition D: last H = 4 obs frames (D5, D21). First layer narrowed from 512 to 352 so the
+# actor's parameter count matches the MLP within ±10 % (plan §7; counts in D24).
+name: hist4
+arch: mlp
+input: history
+history_len: 4
+hidden: [352, 256, 128]

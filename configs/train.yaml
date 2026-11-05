@@ -1,0 +1,30 @@
+# Entry config for scripts/train.py. Example (Mac smoke):
+#   uv run python scripts/train.py experiment=A ppo.num_envs=64 ppo.num_minibatches=4 train.total_steps=2e6
+defaults:
+  - env: go1_flat
+  - ppo: default
+  - policy: mlp
+  - experiment: A
+  - mjx_eval: full
+  - override hydra/job_logging: none    # no train.log in the repo root
+  - override hydra/hydra_logging: none
+  - _self_
+
+seed: 0
+train:
+  total_steps: 2.0e8          # Playground reference: 200M env steps
+  num_evals: 10               # evals (and checkpoints) evenly spaced, incl. the final one
+  eval_envs: 128              # Brax default num_eval_envs
+  log_every: 10               # iterations between metric lines
+  run_prefix: ""              # e.g. "smoke_" for runs that are not experiments
+  runs_dir: runs
+wandb:
+  enabled: false
+  entity: frances-tanx-none   # D8
+  project: latency-budget
+  # Credentials only from env vars / ~/.netrc (WANDB_API_KEY, WANDB_BASE_URL; F13).
+
+hydra:
+  output_subdir: null
+  run:
+    dir: .

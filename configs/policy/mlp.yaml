@@ -1,0 +1,5 @@
+# Conditions A, B, C. Playground reference policy MLP.
+name: mlp
+arch: mlp
+input: obs
+hidden: [512, 256, 128]

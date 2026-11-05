@@ -1,0 +1,5 @@
+# Condition F: obs + true [action delay, obs delay], normalized (R4: only this config).
+name: mlppriv
+arch: mlp
+input: privileged_latency
+hidden: [512, 256, 128]

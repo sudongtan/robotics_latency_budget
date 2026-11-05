@@ -1,0 +1,8 @@
+# @package _global_
+# E: action delay U{0..80 ms}, GRU actor.
+defaults:
+  - override /policy: gru
+experiment: {name: E}
+env:
+  latency:
+    action: {lo: 0, hi: 20}

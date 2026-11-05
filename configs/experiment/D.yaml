@@ -1,0 +1,8 @@
+# @package _global_
+# D: action delay U{0..80 ms}, last 4 obs frames (incl. last 4 actions).
+defaults:
+  - override /policy: history
+experiment: {name: D}
+env:
+  latency:
+    action: {lo: 0, hi: 20}

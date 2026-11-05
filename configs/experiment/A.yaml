@@ -1,0 +1,8 @@
+# @package _global_
+# A: naive baseline, no latency in training.
+defaults:
+  - override /policy: mlp
+experiment: {name: A}
+env:
+  latency:
+    action: {lo: 0, hi: 0}

@@ -1,0 +1,8 @@
+# @package _global_
+# C: action delay U{0..80 ms}, plain MLP.
+defaults:
+  - override /policy: mlp
+experiment: {name: C}
+env:
+  latency:
+    action: {lo: 0, hi: 20}

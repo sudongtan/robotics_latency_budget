@@ -1,0 +1,14 @@
+# Tiny grid for Mac tests of the eval pipeline (same code path as full.yaml).
+defaults:
+  - full
+  - _self_
+episodes: 4
+chunk_envs: 8
+episode_length: 40
+metric_start_step: 5
+action_delays: {lo: 0, hi: 2}
+obs_delays: [0, 1]
+t_m_ms: [0, 20]
+traces:
+  enabled: true
+  episodes: 2

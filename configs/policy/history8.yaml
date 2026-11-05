@@ -1,0 +1,7 @@
+# D-H ablation: last H = 8 obs frames (D21 layout). First layer 244 wide so the actor's
+# parameter count matches the MLP within ±10 % (D29). H = 1 is condition C itself.
+name: hist8
+arch: mlp
+input: history
+history_len: 8
+hidden: [244, 256, 128]

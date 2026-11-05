@@ -1,0 +1,7 @@
+# Condition E: one GRU layer on the obs, then an MLP head (rsl_rl layout; D22). GRU width
+# chosen so the actor's parameter count matches the MLP within ±10 % (D24).
+name: gru
+arch: gru
+input: obs
+gru_size: 168
+hidden: [256, 128]

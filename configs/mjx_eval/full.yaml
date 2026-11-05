@@ -1,0 +1,22 @@
+# In-job MJX evaluation grid (plan §6–§7, Phase 2b, D28). Runs after training in the same job.
+# Latency units: action delay in substeps (4 ms), obs delay in control steps (20 ms).
+enabled: true
+seed: 0                       # fixed for every run: all policies face the same episodes (paired)
+episodes: 256                 # per grid cell (plan §6: >= 256 in MJX)
+chunk_envs: 8192              # envs stepped together; a multiple of `episodes`
+episode_length: null          # null = ppo.episode_length (1000 = 20 s)
+metric_start_step: 25         # exclude the first 0.5 s from rate metrics (plan §10 start-up transient)
+domain_randomization: true    # same dynamics distribution as training; same draws in every cell
+action_delays: {lo: 0, hi: 30}            # 0–120 ms, every substep (4 ms grid)
+jitter: {p: 0.1, width: 3}                # jitter-on cells: offset ~ U{−3..3} substeps (±12 ms), resampled w.p. 0.1 per step (D28)
+obs_delays: [0, 1, 2, 3, 4, 5, 6]         # 0–120 ms, action delay 0
+t_m_ms: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]   # motor time constant, delays 0
+fall: {min_height: 0.15, min_upz: 0.5}    # D17: trunk z < 0.15 m or tilt > 60°
+traces:
+  enabled: false              # the sweep turns this on for the runs used in probing
+  episodes: 32
+  latency: {lo: 0, hi: 20}    # action delay U{0..80 ms} for every condition (A too: H6 control)
+  sets:                       # plan step 30: latency only / latency + dynamics / jitter (time-resolved)
+    - {name: lat, domain_randomization: false, jitter: false}
+    - {name: lat_dyn, domain_randomization: true, jitter: false}
+    - {name: lat_jitter, domain_randomization: false, jitter: true}

@@ -1,0 +1,8 @@
+# @package _global_
+# D-H ablation: action delay U{0..80 ms}, last 2 obs frames.
+defaults:
+  - override /policy: history2
+experiment: {name: DH2}
+env:
+  latency:
+    action: {lo: 0, hi: 20}

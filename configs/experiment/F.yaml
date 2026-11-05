@@ -1,0 +1,8 @@
+# @package _global_
+# F: action delay U{0..80 ms}, MLP + true latency (oracle).
+defaults:
+  - override /policy: privileged
+experiment: {name: F}
+env:
+  latency:
+    action: {lo: 0, hi: 20}

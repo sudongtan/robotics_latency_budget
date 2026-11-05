@@ -1,0 +1,9 @@
+# @package _global_
+# Obs-vs-action ablation: C's policy, observation delay U{0..4} steps (0–80 ms), no action delay.
+defaults:
+  - override /policy: mlp
+experiment: {name: C_obs}
+env:
+  latency:
+    action: {lo: 0, hi: 0}
+    obs: {lo: 0, hi: 4}

@@ -90,6 +90,10 @@ class LatencyJoystick(joystick.Joystick):
         task: str = "flat_terrain",
         config_overrides: Mapping[str, Any] | None = None,
     ) -> None:
+        # Playground fetches the Go1 meshes (mujoco_menagerie, pinned commit) only in
+        # `locomotion.load`; we construct the class directly, so do it here. No-op when
+        # present; on a fresh GPU box this is the first clone.
+        mjx_env.ensure_menagerie_exists()
         # Fresh config: upstream's default argument is a shared mutable ConfigDict.
         super().__init__(
             task=task,

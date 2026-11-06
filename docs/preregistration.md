@@ -159,3 +159,11 @@ They resolve ambiguities and fix one modelling error; no hypothesis or threshold
    automatically if its projected hours exceed a cap. Neither affects any hypothesis test.
    Robustness at intermediate training checkpoints is computed afterwards on the laptop from the
    saved checkpoints (exploratory, for "robustness per unit of training cost").
+
+### 2026-11-06: success threshold τ (computed from condition A only)
+
+τ = **0.1552 m/s** (0.15520315), the 95th percentile (numpy, linear interpolation) of the
+per-episode linear-velocity tracking error of condition A's non-fallen episodes at 0 ms action
+delay, jitter off, pooled over A's 5 seeds (1,278 of 1,280 episodes; 2 fell). Per-seed 95th
+percentiles 0.149–0.160; pooled median 0.099. Computed before any other condition's results were
+loaded; recorded in `configs/analysis/default.yaml`. Runs: `A_mlp_s{0..4}_4a4a467`.

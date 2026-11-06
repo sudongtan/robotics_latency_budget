@@ -4,6 +4,7 @@ One row per GPU session. Mac work is not logged.
 
 | Session | Date | Provider / GPU | Jobs run | Hours | Cost | Notes |
 |---|---|---|---|---|---|---|
+| S (Phase 4 + ablations) | 2026-11-05 – 11-06 | vast.ai on-demand, 1 × RTX 4090 24 GB (instance 59310838) | backend bench, calibration + gate, tiers 1–4: 96 training runs + 3 Brax references (all `DONE`, 0 failed) | 19.12 billed (sweep 18.55) | $7.29 (GPU $6.88 at $0.36/h, storage $0.35, transfer $0.05) | commit `4a4a467`; F41 gate passed, F42 complete; ≈ 600k env-steps/s; all tiers fit (cap 50 h) |
 
 ## Planned
 

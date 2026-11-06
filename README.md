@@ -57,13 +57,13 @@ The project asks:
 | 1. Delay and motor-lag simulation, with tests | Done: action/observation delay (4 ms resolution, jitter), explicit motor control with motor lag; 58 tests incl. no-future-leakage and parity with the original simulator; demo video of a feedback controller failing at 80 ms delay |
 | 2. Own PPO implementation, validated against a reference | Laptop part done: JAX PPO with MLP, history and GRU policies, matching the Playground/Brax reference setup; tested against NumPy and Brax references; all three policies learn in short laptop runs; evaluation grid, gate and full GPU sweep built and rehearsed. Validation against Brax runs at the start of the single GPU session |
 | 3. Pre-registration of hypotheses | Done: hypotheses, success definition and decision rules frozen before any main-sweep run (`docs/preregistration.md`) |
-| 4. Main experiment sweep (GPU) | Not started |
+| 4. Main experiment sweep (GPU) | Done: one RTX 4090 session, 18.5 h, no failed runs. Our PPO reaches 98 % of Brax PPO's return (automatic gate passed); all conditions trained at the pre-registered seed counts (10 seeds for the main comparisons), each with the full latency evaluation grid |
 | 5. Evaluation and first results | Not started |
-| 6. Ablations | Not started |
+| 6. Ablations | Runs done (same GPU session): observation-delay, motor-lag and history-length variants; analysis pending |
 | 7. Analysis: cross-evaluation, probing, gait | Not started |
 | 8. Paper, videos, write-up | Not started |
 
-Current state: everything the GPU session runs is built and rehearsed on the laptop, and the pre-registration is frozen. Next is the single GPU session: calibration against Brax PPO, an automatic gate, the main sweep and the ablations.
+Current state: the single GPU session is finished and all results are on the laptop. Next is evaluation and first results, entirely on the laptop.
 
 ## Tech stack
 

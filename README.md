@@ -58,12 +58,12 @@ The project asks:
 | 2. Own PPO implementation, validated against a reference | Laptop part done: JAX PPO with MLP, history and GRU policies, matching the Playground/Brax reference setup; tested against NumPy and Brax references; all three policies learn in short laptop runs; evaluation grid, gate and full GPU sweep built and rehearsed. Validation against Brax runs at the start of the single GPU session |
 | 3. Pre-registration of hypotheses | Done: hypotheses, success definition and decision rules frozen before any main-sweep run (`docs/preregistration.md`) |
 | 4. Main experiment sweep (GPU) | Done: one RTX 4090 session, 18.5 h, no failed runs. Our PPO reaches 98 % of Brax PPO's return (automatic gate passed); all conditions trained at the pre-registered seed counts (10 seeds for the main comparisons), each with the full latency evaluation grid |
-| 5. Evaluation and first results | Not started |
-| 6. Ablations | Runs done (same GPU session): observation-delay, motor-lag and history-length variants; analysis pending |
-| 7. Analysis: cross-evaluation, probing, gait | Not started |
+| 5. Evaluation and first results | Done: pre-registered analysis with bootstrap CIs; verdicts for H1–H5 (none supported as stated; H5 inconclusive). Main finding: under randomized delay most policies never learn to walk (the GRU does in 7 of 10 seeds). Results replicate in a second simulator (native MuJoCo) within 1–2 pp (`docs/results.md`) |
+| 6. Ablations | Done (same GPU session): observation-delay, motor-lag and history-length variants; analysed with Phase 5 |
+| 7. Analysis: cross-evaluation, probing, gait | In progress: latency probing (H6) and robustness over training done; gait analysis not started |
 | 8. Paper, videos, write-up | Not started |
 
-Current state: the single GPU session is finished and all results are on the laptop. Next is evaluation and first results, entirely on the laptop.
+Current state: evaluation done on the laptop. Open: whether to run a follow-up with a longer training budget for all conditions (the GRU had not converged at 200M steps), and the gait analysis.
 
 ## Tech stack
 

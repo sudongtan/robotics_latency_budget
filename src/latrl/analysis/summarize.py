@@ -173,3 +173,73 @@ def per_run(ps: pd.DataFrame, runs: pd.DataFrame, cfg: dict) -> pd.DataFrame:
         row |= {"actor_params": params["actor"]} | train_timing(r.path)
         rows.append(row)
     return pd.DataFrame(rows)
+
+
+def native_per_setting(runs: pd.DataFrame, tau: float) -> pd.DataFrame:
+    """Native MuJoCo cells (exploratory, prereg §7), paired with the same MJX episodes.
+
+    One row per (run, axis, action delay, perturbation): native success / fall rate, and for
+    the unperturbed action axis the MJX success of the *same* episodes (the first n of the
+    MJX grid), so `success - success_mjx` is the paired sim-to-sim gap.
+    """
+    rows = []
+    keys = ["axis", "action_delay", "friction", "payload_kg", "motor"]
+    for r in runs.itertuples():
+        p = r.path / "eval_native.parquet"
+        if not p.exists():
+            continue
+        n = pd.read_parquet(p)
+        n["success"] = (~n["fell"]) & (n["lin_err"] <= tau)
+        g = (
+            n.groupby(keys)
+            .agg(
+                episodes=("success", "size"),
+                success=("success", "mean"),
+                fall=("fell", "mean"),
+                lin_err=("lin_err", "mean"),
+            )
+            .reset_index()
+        )
+        m = pd.read_parquet(
+            r.path / "eval_mjx.parquet",
+            columns=["axis", "action_delay", "episode", "fell", "lin_err"],
+        )
+        m = m[(m["axis"] == "action") & (m["episode"] < int(g["episodes"].max()))]
+        m["success"] = (~m["fell"]) & (m["lin_err"] <= tau)
+        mj = (
+            m.groupby("action_delay")
+            .agg(success_mjx=("success", "mean"), fall_mjx=("fell", "mean"))
+            .reset_index()
+        )
+        g = g.merge(mj, on="action_delay", how="left")
+        g.loc[g["axis"] != "action", ["success_mjx", "fall_mjx"]] = np.nan
+        g.insert(0, "run_id", r.run_id)
+        g.insert(1, "cond", r.cond)
+        g.insert(2, "seed", r.seed)
+        rows.append(g)
+    out = pd.concat(rows, ignore_index=True) if rows else pd.DataFrame()
+    if len(out):
+        out["action_delay_ms"] = out["action_delay"] * 4.0
+    return out
+
+
+def checkpoint_per_setting(runs: pd.DataFrame, tau: float) -> pd.DataFrame:
+    """Native success at every saved checkpoint (exploratory: robustness per unit of
+    training cost). One row per (run, checkpoint iteration, action delay)."""
+    rows = []
+    for r in runs.itertuples():
+        p = r.path / "eval_checkpoints.parquet"
+        if not p.exists():
+            continue
+        n = pd.read_parquet(p)
+        n["success"] = (~n["fell"]) & (n["lin_err"] <= tau)
+        g = (
+            n.groupby(["iter", "env_steps", "train_s", "action_delay", "action_delay_ms"])
+            .agg(episodes=("success", "size"), success=("success", "mean"), fall=("fell", "mean"))
+            .reset_index()
+        )
+        g.insert(0, "run_id", r.run_id)
+        g.insert(1, "cond", r.cond)
+        g.insert(2, "seed", r.seed)
+        rows.append(g)
+    return pd.concat(rows, ignore_index=True) if rows else pd.DataFrame()

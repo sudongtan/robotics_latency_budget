@@ -1,0 +1,30 @@
+# Latency probing (H6, plan step 30, prereg §6). Entry: scripts/probe.py.
+# Reads runs/<id>/traces/{lat,lat_dyn,lat_jitter}.npz (written by the in-job MJX eval:
+# 128 episodes x 1000 steps, action delay per episode ~ U{0..20} substeps = 0..80 ms,
+# the same draws for every run). Writes runs/_analysis/probe_*.
+seed: 0                       # fold assignment, random-network init, MLP-probe init (R9)
+commit: 4a4a467
+runs: "runs/{A_mlp,C_mlp,D_hist4,E_gru,F_mlppriv}_s*_4a4a467"
+sets: [lat, lat_dyn]          # H6 test on `lat` (latency only); `lat_dyn` reported alongside
+target: action_delay          # substeps (4 ms); what the probe regresses
+start_step: 25                # skip the reset transient (= native/MJX metric_start_step)
+stride: 5                     # every 5th control step (0.1 s): fewer, less correlated rows
+folds: 5                      # episode-level outer folds (prereg §6)
+inner_folds: 4                # episode-level inner folds, ridge alpha selection
+alphas: [1.0e-3, 1.0e-2, 1.0e-1, 1.0, 1.0e1, 1.0e2, 1.0e3, 1.0e4]
+random_inits: 5               # random-network control: one init per probed seed
+mlp_probe:                    # secondary probe (D6): 1 hidden layer
+  hidden: 64
+  steps: 2000                 # full-batch Adam steps
+  lr: 1.0e-3
+  weight_decay: 1.0e-4
+# Which representation is probed per policy (plan step 30): GRU state for E, the actor's
+# last hidden layer otherwise. E's last hidden layer is reported as a secondary row.
+representation: {E: hidden, default: features}
+h6:
+  probed: [D, E]
+  controls: [A, random]
+  margin: 0.2                 # R2 must exceed each control by >= 0.2 (IQM over seeds)
+n_boot: 5000
+workers: 8                    # processes (one run each)
+ci: 0.95

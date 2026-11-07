@@ -116,8 +116,20 @@ def main() -> None:
         "H3": H.h3(pr, cfg, rh, r2["nominal_cost_holds"]),
         "H4": H.h4(pr, cfg, rh),
         "H5": H.h5(ps, pr, cfg, rh),
-        "H6": {"verdict": "pending", "reason": "probing analysis (Phase 7)"},
+        "H6": (
+            json.loads((out / "h6.json").read_text())
+            if (out / "h6.json").exists()
+            else {"verdict": "pending", "reason": "run scripts/probe.py (Phase 7)"}
+        ),
     }
+    nat = sm.native_per_setting(runs, cfg["tau"])
+    if len(nat):
+        nat.to_parquet(out / "native_per_setting.parquet", index=False)
+        print(f"native: {nat['run_id'].nunique()} runs")
+    ck = sm.checkpoint_per_setting(runs, cfg["tau"])
+    if len(ck):
+        ck.to_parquet(out / "checkpoints.parquet", index=False)
+        print(f"checkpoints: {ck['run_id'].nunique()} runs")
     (out / "hypotheses.json").write_text(json.dumps(hyp, indent=2, default=float))
     sha, dirty = git_commit()
     (out / "meta.json").write_text(

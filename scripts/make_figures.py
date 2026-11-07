@@ -209,6 +209,105 @@ def fig_channels(ps, pr, cfg) -> None:
     plt.close(fig)
 
 
+def fig_native(nat: pd.DataFrame, cfg) -> None:
+    """Sim-to-sim (native MuJoCo vs MJX, same episodes) and dynamics perturbations."""
+    rng = np.random.default_rng(cfg["seed"])
+    conds = [c for c in ("A", "B20", "E") if c in set(nat["cond"])]
+    fig, axes = plt.subplots(
+        1,
+        4,
+        figsize=(12, 3.3),
+        constrained_layout=True,
+        gridspec_kw={"width_ratios": [1.5, 1, 1, 1]},
+    )
+    ax = axes[0]
+    for c in conds:
+        sub = nat[(nat["cond"] == c) & (nat["axis"] == "action")]
+        for col, ls, lab in (("success", "-", "native"), ("success_mjx", "--", "MJX")):
+            tab = sub.pivot(index="run_id", columns="action_delay_ms", values=col) * 100
+            y = [S.iqm(tab[x].to_numpy()) for x in tab.columns]
+            ax.plot(
+                tab.columns,
+                y,
+                color=COLOR[c],
+                ls=ls,
+                lw=2,
+                label=f"{c}, {lab}" if c == conds[0] or ls == "-" else None,
+            )
+    ax.set_xlabel("test action latency (ms)")
+    ax.set_ylabel("success rate (%)  IQM over seeds")
+    ax.set_title("Native MuJoCo (solid) vs MJX (dashed)", loc="left", fontsize=10)
+    ax.set_xlim(0, 120)
+    ax.set_ylim(0, 105)
+    ax.legend(fontsize=7, loc="upper right")
+    specs = [
+        ("friction", "friction", "floor friction ×"),
+        ("payload", "payload_kg", "payload (kg)"),
+        ("motor", "motor", "motor strength ×"),
+    ]
+    for ax, (axis, col, xlabel) in zip(axes[1:], specs, strict=True):
+        for c in conds:
+            for d, ls in ((0, "-"), (5, "--")):
+                sub = nat[(nat["cond"] == c) & (nat["axis"] == axis) & (nat["action_delay"] == d)]
+                base = nat[
+                    (nat["cond"] == c) & (nat["axis"] == "action") & (nat["action_delay"] == d)
+                ]
+                nominal = {"friction": 1.0, "payload_kg": 0.0, "motor": 1.0}[col]
+                both = pd.concat([sub, base.assign(**{col: nominal})])
+                tab = both.pivot(index="run_id", columns=col, values="success") * 100
+                y = [S.iqm(tab[x].to_numpy()) for x in tab.columns]
+                ax.plot(
+                    tab.columns,
+                    y,
+                    color=COLOR[c],
+                    ls=ls,
+                    lw=1.8,
+                    marker="o",
+                    ms=3.5,
+                    label=f"{c}, {d * 4} ms" if axis == "friction" else None,
+                )
+        ax.set_xlabel(xlabel)
+        ax.set_ylim(0, 105)
+        ax.set_title(f"Native: {axis}", loc="left", fontsize=10)
+    axes[1].legend(fontsize=7, loc="lower right")
+    del rng
+    fig.savefig(OUT / "fig4_native_and_perturbations.png", dpi=200)
+    plt.close(fig)
+
+
+def fig_checkpoints(ck: pd.DataFrame, cfg) -> None:
+    """Native success at each saved checkpoint vs. training wall-clock (exploratory)."""
+    conds = [c for c in ("A", "B20", "C", "E") if c in set(ck["cond"])]
+    delays = [0, 5, 10]  # substeps: 0, 20, 40 ms
+    fig, axes = plt.subplots(1, 3, figsize=(11, 3.3), sharey=True, constrained_layout=True)
+    for ax, d in zip(axes, delays, strict=True):
+        for c in conds:
+            sub = ck[(ck["cond"] == c) & (ck["action_delay"] == d)]
+            for _, g in sub.groupby("run_id"):
+                g = g.sort_values("iter")
+                ax.plot(g["train_s"] / 60, g["success"] * 100, color=COLOR[c], lw=0.7, alpha=0.35)
+            agg = sub.groupby("iter").agg(
+                h=("train_s", "median"), s=("success", lambda x: S.iqm(x.to_numpy()))
+            )
+            n = sub["run_id"].nunique()
+            ax.plot(
+                agg["h"] / 60,
+                agg["s"] * 100,
+                color=COLOR[c],
+                lw=2,
+                marker="o",
+                ms=3,
+                label=f"{LABEL[c]}  (n={n})",
+            )
+        ax.set_title(f"test action latency {d * 4} ms", loc="left", fontsize=10)
+        ax.set_xlabel("training wall-clock (GPU min, cumulative train time)")
+        ax.set_ylim(0, 105)
+    axes[0].set_ylabel("native success (%)  thin: seeds, bold: IQM")
+    axes[0].legend(fontsize=7, loc="lower right")
+    fig.savefig(OUT / "fig5_robustness_vs_training.png", dpi=200)
+    plt.close(fig)
+
+
 def main() -> None:
     cfg = OmegaConf.to_container(OmegaConf.load(ROOT / "configs/analysis/default.yaml"))
     OUT.mkdir(parents=True, exist_ok=True)
@@ -218,6 +317,10 @@ def main() -> None:
     fig_hero(ps, pr, cfg)
     fig_learning(pr, cfg)
     fig_channels(ps, pr, cfg)
+    if (AN / "native_per_setting.parquet").exists():
+        fig_native(pd.read_parquet(AN / "native_per_setting.parquet"), cfg)
+    if (AN / "checkpoints.parquet").exists():
+        fig_checkpoints(pd.read_parquet(AN / "checkpoints.parquet"), cfg)
     print("wrote", sorted(p.name for p in OUT.glob("*.png")))
 
 

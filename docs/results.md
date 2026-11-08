@@ -76,14 +76,15 @@ delay U{0..80 ms}, 5-fold episode-level CV; `runs/_analysis/h6.json`, `probe_per
 - The rule fails on D, and clearly (CI of R²(D) − R²(A) is [−0.52, −0.44]). D never walks (F43): a robot
   standing still produces no delay signature, and a random network fed D's inputs also scores ≈ 0. So this
   says nothing about whether a *walking* history policy would encode latency.
-- E's GRU state does encode latency. In every seed it beats the random GRU on the same inputs, by
+- E's GRU state carries latency information, much of it already recoverable from a random GRU on the same
+  inputs (0.42–0.49 in walking seeds). In every seed the trained state beats the random GRU on the same inputs, by
   0.20–0.32 (paired, exploratory; the pre-registered comparison is unpaired, and with E's walk/stand split
   across seeds its CIs are too wide to decide). Walking seeds reach R² ≈ 0.75.
 - A's 0.42 is on survivors only (39 % of steps alive; A falls at ≥ 40 ms), so its target range is narrower
   (SD 3.2 vs 5.9 substeps). It is a weak control for this reason.
 - Adding dynamics randomization (`lat_dyn`) lowers R² by ≤ 0.05 everywhere (E 0.56, A 0.38). The prior
-  report of near-zero encoding with many randomized factors (arXiv 2603.21268) is not reproduced for a GRU
-  that walks.
+  report of near-zero encoding with five randomized factors (arXiv 2603.21268) used a different setup, so
+  this is not a direct replication attempt; here the GRU's R² stays well above zero.
 - The MLP probe (secondary, fixed settings) overfits where there is no signal (R² ≈ −0.6 for C/D) and adds
   nothing where there is (E 0.55, A 0.10); F 0.93. Not used for any conclusion.
 
@@ -164,12 +165,14 @@ episodes per cell, paired with the MJX grid's episodes (`scripts/eval_native.py`
 
 - **Transfer is near-exact.** Per-cell native − MJX success: mean −0.1 pp, SD 1.2 pp, largest 7.8 pp
   (1,530 cells). Per-run L50: mean difference −0.14 ms, largest 4 ms (E seed 7: 36 vs 40 ms); whether L50 is
-  censored agrees in 90/90 runs. None of the latency results above is an MJX artifact.
+  censored agrees in 90/90 runs. This covers test-time action delay and the perturbations below. Observation
+  delay, jitter and motor lag were not replayed natively, and it says nothing about whether the training
+  failure is simulator-specific (all training was in MJX).
 - **Delay and dynamics interact for the baseline.** At 0 ms A is insensitive to every perturbation tested
-  (93–97 % success). At 20 ms (A's own L50) it is fragile: success 47 % nominal, 19 % on half friction,
+  (92–97 % success). At 20 ms (A's own L50) it is fragile: success 47 % nominal, 19 % on half friction,
   23 % with motors 1.2× stronger. Stronger motors hurt because higher PD gain raises the loop gain, so the
   same delay leaves less phase margin; weaker motors (0.8×) leave A at 54 %.
-- **The delay-trained policies are not.** B20 (trained at 20 ms) and E change by ≤ 3 pp between 0 and 20 ms
+- **The delay-trained policies are not.** B20 (trained at 20 ms) and E change by ≤ 5.2 pp and ≤ 3.6 pp between 0 and 20 ms
   under every perturbation; they keep the usual mild sensitivity to weak motors (0.8×: B20 74–78 %,
   E 44–47 %, vs. 88–90 % and 61–64 % nominal) and low friction.
 
@@ -191,11 +194,23 @@ bold: IQM over seeds. The GRU (E) trains ≈ 2× slower per step, so its 200M st
 ## Robustness over training (exploratory)
 
 - **The baseline gets more latency-fragile as it keeps training.** A's success at 0 ms rises to 91 % by 60M
-  steps and keeps creeping up (96 % at 200M). At 20 ms it peaks at 67 % (60M) and then falls to 56 % (200M);
-  4 of 5 seeds decline (−6 to −22 pp), one rises (+6 pp). At 40 ms it peaks at 10 % (40M) and reaches 0 %.
-  Training without delay keeps tightening the controller around zero delay. Per point the 32-episode
-  estimates are noisy (≈ ±8 pp), so this is a trend across checkpoints and seeds, not a per-point claim.
+  steps and keeps creeping up (96 % at 200M). At 20 ms its IQM is 67 % at 60M and 56 % at 200M; at 40 ms it
+  peaks at 10 % (40M) and reaches 0 %. The start point was picked after seeing the curve. Per-seed linear
+  slopes from 60M on are −17, −12 and −7 pp per 100M steps in three seeds and ≈ flat (+0.7, −2.4) in two, with
+  32 episodes per point (≈ ±8 pp). Suggestive only.
 - **The delay-trained policies do not.** B20's success at 20 and 40 ms rises and plateaus (90 % and ≈ 65 %).
-- **E had not converged at 200M steps.** Its IQM was still rising steeply at the last checkpoint (20 ms:
-  52 → 64 %), and several walking seeds gained 20–25 pp between the last two checkpoints. This bears on Q18:
-  the walk/stand split for E, and possibly for the MLPs, may be partly a training-budget effect.
+- **E's IQM was still rising at 200M steps** (20 ms: 52 → 64 % over the last two checkpoints), but mostly
+  because of late-escaping seeds: 2 of the 7 walking seeds gained ≈ 25 pp, the other 5 gained 0–9 pp, and the 3
+  standing seeds never left ≈ 3 %. A longer budget might help E's late seeds. Nothing here suggests it would
+  help the MLPs: C is at ≈ 3 % in every seed at every checkpoint.
+
+## Status of this version and next steps
+
+Closed as a first version (2026-11-08): the pre-registered verdicts are reported as they are, with the learning
+failure under randomized delay as the main result. Not run on any other PPO recipe, so whether the failure is
+specific to this recipe, budget or simulator is open. The project's original question (which mitigation buys the
+most robustness per unit of training cost) cannot be answered from these runs: C, D and F never walk, leaving only
+the GRU.
+
+Deferred: a longer-budget or latency-curriculum follow-up for all conditions, gait analysis, time-resolved probes,
+delay vs. motor-lag cross-evaluation, videos, a literature search on the learning failure, and a paper.

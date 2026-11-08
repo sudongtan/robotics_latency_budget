@@ -1,0 +1,26 @@
+# Analysis settings (Phase 5+). Entry: scripts/analyze.py. Pre-registration §4–§6.
+seed: 0                      # bootstrap RNG seed (R9)
+n_boot: 5000                 # stratified bootstrap resamples (rliable default, prereg §5)
+ci: 0.95                     # two-sided CI level; H4's equivalence test uses 0.90
+commit: 4a4a467              # session S commit: analyse only finished runs at this commit (R5)
+
+# Success (prereg §4). tau = 95th percentile of per-episode lin_err of condition A's
+# non-fallen episodes at 0 ms action delay (jitter off), pooled over A's 5 seeds; numpy
+# percentile, linear interpolation. Computed 2026-11-06 before any other condition was
+# analysed (D39); scripts/analyze.py recomputes it and stops if it differs.
+tau: 0.15520315
+tau_percentile: 95
+success_threshold: 0.5       # L50, delay margin
+w_hi: 0.9                    # L90
+w_lo: 0.1                    # L10
+censor_ms: 120.0             # top of the action-latency test range
+
+decision:
+  h1_w_max_ms: 25.0
+  h1_l50_range_ms: [30.0, 70.0]
+  h3_r_min: 0.5
+  h4_equiv_ms: 10.0
+  h4_equiv_success_pp: 5.0   # fallback if >= half of D or E seeds are censored
+  h4_ci: 0.90
+  h5_max_pp: 10.0
+  h5_floor_ceiling: [0.05, 0.95]

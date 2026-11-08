@@ -1,0 +1,21 @@
+# Native MuJoCo evaluation (plan step 23): scripts/eval_native.py. Exploratory (prereg §7).
+# Episodes are the first `episodes` of the MJX grid's episodes (same seed, keys, DR draws).
+runs: "runs/{A,B20,B40,B60,C,D,E,F}_*_4a4a467"   # brace + glob pattern of finished runs
+workers: 8                    # processes (one run each)
+seed: 0                       # = mjx_eval.seed (paired with the MJX grid)
+mjx_episodes: 256             # = mjx_eval.episodes: same key splits as the MJX grid
+episodes: 64                  # plan §6: >= 64 per point in native MuJoCo
+episode_length: 1000
+metric_start_step: 25
+jitter: {p: 0.1, width: 3}    # = mjx_eval.jitter (unused unless a jitter cell is added)
+fall: {min_height: 0.15, min_upz: 0.5}
+action_delays: [0, 2, 4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30]   # substeps, 0–120 ms every 8 ms + 20 ms (perturbation baseline)
+perturb:
+  action_delays: [0, 5]       # 0 and 20 ms
+  friction: [0.5, 0.75, 1.25, 1.5]   # × floor sliding friction (after the DR draw)
+  payload_kg: [1.0, 2.0, 3.0]        # added to the trunk
+  motor: [0.8, 0.9, 1.1, 1.2]        # × motor strength (Kp, Kd and torque limit)
+checkpoints:                  # scripts/eval_checkpoints.py: robustness during training (exploratory)
+  runs: "runs/{A_mlp,B20_mlp,C_mlp,E_gru}_*_4a4a467"   # main conditions only (30 runs)
+  action_delays: [0, 2, 4, 5, 6, 8, 10, 15, 20]   # substeps: 0–80 ms
+  episodes: 32

@@ -1,0 +1,11 @@
+# @package _global_
+# Follow-up F1, arm 1 (exploratory): C's task (action delay U{0..80 ms}, plain MLP), but
+# fine-tuned from A's final checkpoint for the same seed instead of trained from scratch
+# (Li & Sun 2026 protocol: their delay arm continues from a policy trained without delay).
+defaults:
+  - override /policy: mlp
+experiment: {name: C_ft}
+env:
+  latency:
+    action: {lo: 0, hi: 20}
+init_from: runs/A_mlp_s${seed}_4a4a467   # session S baseline, same seed

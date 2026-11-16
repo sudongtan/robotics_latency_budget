@@ -167,3 +167,25 @@ per-episode linear-velocity tracking error of condition A's non-fallen episodes 
 delay, jitter off, pooled over A's 5 seeds (1,278 of 1,280 episodes; 2 fell). Per-seed 95th
 percentiles 0.149–0.160; pooled median 0.099. Computed before any other condition's results were
 loaded; recorded in `configs/analysis/default.yaml`. Runs: `A_mlp_s{0..4}_4a4a467`.
+
+### 2026-11-17: follow-up F1 plan (exploratory; written before any F1 data)
+
+Not a hypothesis test and not part of the pre-registered analysis. Purpose: find why condition C
+(action delay U{0..80 ms}, plain MLP) never learns to walk (results: learning failure), using the
+three explanations suggested by the prior work and our training logs.
+
+| Arm | Change from C | Explanation it tests |
+|---|---|---|
+| C (control) | none; retrained at the follow-up commit | code changes did not alter C |
+| C_ft | start from A's final checkpoint (same seed), then 200M steps | learning from scratch under wide delay (Li & Sun fine-tune) |
+| C_r40 | action delay U{0..40 ms} | the range is too wide |
+| C_hcrit | critic also sees the 5 actions sent before the last one | the critic cannot account for actions still in flight |
+
+5 seeds per arm, same PPO config (R1), full in-job eval grid on the session-S episodes.
+
+**Primary measure:** seeds that walk (final eval return > 25, the split in the results), per arm.
+**Readings, fixed now:** the control must stand in ≥ 4/5 seeds, else the code changes moved C and the
+arms are not interpretable. An arm "fixes learning" if ≥ 4/5 seeds walk, "partly" at 2–3/5, "no" at ≤ 1/5.
+Secondary: L50, delay margin and 0 ms success of walking seeds, reported per arm with all seeds.
+**Expectation (Claude, before data):** C_ft most likely to walk; C_r40 partly (B40 walked in 2/5);
+C_hcrit uncertain. Results reported whichever way they come out.

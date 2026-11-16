@@ -16,7 +16,6 @@ import jax
 from omegaconf import DictConfig, OmegaConf
 
 from latrl.envs.go1 import LatencyJoystick, make_env
-from latrl.envs.specs import PRIVILEGED_OBS_SIZE
 from latrl.ppo import checkpoint, normalizer
 from latrl.ppo.trainer import Norm, Trainer, TrainState
 
@@ -31,13 +30,13 @@ def load_run(
     cfg = OmegaConf.load(run_dir / "config.yaml")
     cfg.env.impl = impl  # CLAUDE.md: jax on the Mac (warp is slower on CPU)
     env = make_env(cfg.env)
-    tr = Trainer(env, cfg.env, cfg.ppo, cfg.policy)
+    tr = Trainer(env, cfg.env, cfg.ppo, cfg.policy, cfg.get("critic"))
     k_a, k_c = jax.random.split(jax.random.PRNGKey(0))
     params: dict[str, Any] = {"actor": tr.actor.init(k_a), "critic": tr.critic.init(k_c)}
     template = TrainState(
         params=params,
         opt_state=tr.optimizer.init(params),
-        norm=Norm(normalizer.init(tr.inp.size), normalizer.init(PRIVILEGED_OBS_SIZE)),
+        norm=Norm(normalizer.init(tr.inp.size), normalizer.init(tr.critic_size)),
         key=jax.random.PRNGKey(0),
     )
     path = (

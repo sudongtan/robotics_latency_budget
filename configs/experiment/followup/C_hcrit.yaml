@@ -1,0 +1,14 @@
+# @package _global_
+# Follow-up F1, arm 3 (exploratory): C (action delay U{0..80 ms}, plain MLP, from scratch),
+# but the critic also sees the 5 actions sent before the last one. At 80 ms (20 substeps)
+# the target in use is at most 5 sends old, so this covers every action that may still be
+# in flight. The delay value itself is not given (as in the prior work, F49); the actor's
+# input is unchanged (R4).
+defaults:
+  - override /policy: mlp
+experiment: {name: C_hcrit}
+env:
+  latency:
+    action: {lo: 0, hi: 20}
+critic:
+  action_history: 5

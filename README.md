@@ -5,6 +5,37 @@ take time. This project measures how much delay a learned robot controller can h
 before it fails, and which training method makes it most tolerant. Today engineers mostly
 find this out by trial and error.
 
+## Results (first version)
+
+![Success rate vs. test action latency](docs/figures/fig1_success_vs_action_latency.png)
+
+1. **A controller trained without delay falls off a cliff at about one control step.** Success drops
+   from 95 % at 0 ms to 50 % at 20 ms (95 % CI 19–21 ms); the controller acts every 20 ms. The
+   collapse takes 17 ms from 90 % to 10 % success.
+2. **Randomizing the delay over 0–80 ms during training stopped most policies from learning to walk.**
+   They learned to stand still instead: 0 of 10 seeds walk with randomization alone (C), with a
+   short history (D) or when told the true delay (F). The recurrent policy (GRU, E) escapes in 7 of
+   10 seeds and keeps 50 % success up to 46 ms, at about twice the training time.
+3. **Training at one fixed delay works if the delay is short.** A policy trained at 20 ms walks in
+   5 of 5 seeds and keeps 50 % success up to 42 ms. Training at 40 or 60 ms mostly fails (2 of 5 and
+   1 of 5 seeds walk).
+4. **Late sensors are easier to learn with than late motors.** With the delay randomized on the
+   observation side instead, plain MLPs walk in 4 of 5 seeds and the GRU in 5 of 5 (50 % success up
+   to 84 and 109 ms). At test time, policies that walk lose about the same whichever side the delay
+   is on.
+5. **The GRU's memory carries information about the delay** (probe R² ≈ 0.75 in seeds that walk).
+   Much of that is already recoverable from a random network fed the same inputs.
+6. **The latency results replicate in a second simulator** (native MuJoCo, same episodes), and they
+   interact with dynamics. At 20 ms, the baseline drops from 47 % to 19 % success on half friction,
+   and to 23 % with motors 1.2× stronger.
+
+None of the six pre-registered hypotheses was supported as stated (five not supported, one
+inconclusive). The main result is the learning failure. It comes from one fixed PPO recipe and
+training budget, so whether it is specific to that recipe is open. The original question, which
+mitigation buys the most robustness per unit of training cost, cannot be answered from these runs,
+because only the GRU learns under randomized delay. Full numbers, verdicts, figures and caveats:
+[`docs/results.md`](docs/results.md).
+
 ## The question
 
 A four-legged robot (Unitree Go1, simulated in MuJoCo) learns to walk with reinforcement
@@ -43,11 +74,12 @@ The project asks:
   (Brax PPO) on the baseline condition; the experiments run only if it matches.
 - Every figure regenerates from saved runs with one command.
 
-## Planned deliverables
+## Deliverables
 
-- **Headline figure:** success rate vs. delay, one curve per method, with confidence intervals.
-- **Side-by-side videos:** baseline vs. best method at ~60 ms delay.
-- **Reproducible code:** one command per figure; reported compute cost.
+- **Headline figure:** success rate vs. delay, one curve per method, with confidence intervals. Done (above).
+- **Side-by-side videos:** baseline vs. best method at ~60 ms delay. Deferred.
+- **Reproducible code:** one command per figure; reported compute cost. Done
+  ([`docs/compute_log.md`](docs/compute_log.md): one GPU session, $7.29).
 
 ## Progress
 

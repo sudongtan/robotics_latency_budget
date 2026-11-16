@@ -47,6 +47,23 @@ robustness trade-off.
 
 "Not supported" means the rule fails and the CIs exclude the supporting region (prereg §6).
 
+**What each verdict can tell us** (post-hoc reading, added 2026-11-16; the verdicts above are unchanged).
+A verdict is informative only if the policies it compares learned the task. C, D and F never walk (0/10 each),
+so:
+
+| | Policies it needs | Learned? | Status of the test |
+|---|---|---|---|
+| H1 | A | 5/5 | **Tested.** Sharp collapse as predicted, but at 20 ms, not 30–70 ms |
+| H2 | A, C | C 0/10 | **Tested as a procedure only:** randomizing over 0–80 ms with this recipe does not produce a robust walker. The robustness of a walking randomization-trained policy is untested |
+| H3 | C, D | 0/10, 0/10 | **Not meaningfully tested:** compares two standing policies |
+| H4 | D, E | D 0/10 | **Not meaningfully tested,** except the cost part (E ≈ 2× D's wall-clock) |
+| H5 | C, D, E, C_obs, D_obs, E_obs | 3 of 6 walk | **Partial:** the walking policies are within ≈ 10 pp across channels |
+| H6 | D, E (controls A, random) | D 0/10 | **Not meaningfully tested for D;** partial evidence for E |
+
+"Not supported" for H3, H4 and H6 follows the pre-registered rule but is not evidence against those hypotheses.
+The question they were meant to answer (which mitigation buys the most robustness per unit of training cost) is
+unanswered.
+
 **H5 detail** (success, same channel → cross channel, pp, IQM over seeds; CI of the difference):
 
 | Policy | 20 ms | 40 ms | 60 ms | 80 ms | 100 ms | 120 ms |
@@ -211,6 +228,9 @@ failure under randomized delay as the main result. Not run on any other PPO reci
 specific to this recipe, budget or simulator is open. The project's original question (which mitigation buys the
 most robustness per unit of training cost) cannot be answered from these runs: C, D and F never walk, leaving only
 the GRU.
+
+The most informative next experiment is the same setup with a narrower randomization range (e.g. 0–40 ms)
+or a latency curriculum, for all conditions. If the MLPs then learn, H2–H4 become testable.
 
 Deferred: a longer-budget or latency-curriculum follow-up for all conditions, gait analysis, time-resolved probes,
 delay vs. motor-lag cross-evaluation, videos, a literature search on the learning failure, and a paper.

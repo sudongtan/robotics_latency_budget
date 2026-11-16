@@ -29,12 +29,17 @@ find this out by trial and error.
    interact with dynamics. At 20 ms, the baseline drops from 47 % to 19 % success on half friction,
    and to 23 % with motors 1.2× stronger.
 
-None of the six pre-registered hypotheses was supported as stated (five not supported, one
-inconclusive). The main result is the learning failure. It comes from one fixed PPO recipe and
-training budget, so whether it is specific to that recipe is open. The original question, which
-mitigation buys the most robustness per unit of training cost, cannot be answered from these runs,
-because only the GRU learns under randomized delay. Full numbers, verdicts, figures and caveats:
-[`docs/results.md`](docs/results.md).
+**What this says about the pre-registered hypotheses.** Only H1 was properly tested, and it was not
+supported: the collapse is sharp, as predicted, but at 20 ms rather than 30–70 ms. H2 (randomization
+widens the margin) was tested only as a procedure: randomizing over 0–80 ms with this recipe does not
+produce a robust walking policy. Whether a walking policy trained that way would be more robust was not
+tested. H3, H4 and H6 compare or probe policies that never learned to walk, so they could not be
+meaningfully tested. Their formal verdict is "not supported" under the pre-registered rules, but that
+is not evidence against them. H5 has partial evidence (the policies that walk). So the original
+question, which mitigation buys the most robustness per unit of training cost, is unanswered rather
+than answered "no". The main result is the learning failure itself. It comes from one fixed PPO recipe
+and training budget, so whether it is specific to that recipe is open. Full numbers, verdicts, figures
+and caveats: [`docs/results.md`](docs/results.md).
 
 ## The question
 

@@ -167,3 +167,13 @@ per-episode linear-velocity tracking error of condition A's non-fallen episodes 
 delay, jitter off, pooled over A's 5 seeds (1,278 of 1,280 episodes; 2 fell). Per-seed 95th
 percentiles 0.149–0.160; pooled median 0.099. Computed before any other condition's results were
 loaded; recorded in `configs/analysis/default.yaml`. Runs: `A_mlp_s{0..4}_4a4a467`.
+
+### 2026-11-16: which verdicts were testable (post-hoc, after all results)
+
+Not a change to any hypothesis, rule or verdict. Conditions C, D and F did not learn to walk in any seed (they
+learned to stand), so the tests that compare or probe them carry little information: H3 (C vs D) and H4's
+robustness part (E vs D) compare against standing policies, and H6 for D probes a standing policy. H2 tests the
+procedure (randomized training does not yield a walking policy here), not the robustness of a randomization-trained
+walker. H1 is a valid test; H5 is partial. The pre-registration did not anticipate a condition failing to learn;
+§3 says failed runs are reported, not rerun with other settings. See `docs/results.md`.
+

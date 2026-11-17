@@ -63,6 +63,11 @@ def test_r4_latency_only_in_privileged_features(make):
     np.testing.assert_allclose(np.asarray(hi[OBS_SIZE:]), [20 / 30, 3 / 6], rtol=1e-6)
 
 
+# Condition F and its F2 variant F_r40 (D48, D49). Any other config reading the true
+# latency breaks R4.
+ORACLE_CONFIGS = {"F", "F_r40"}
+
+
 def test_only_condition_f_uses_privileged_input():
     exp_dir = ENV_CFG.parents[1] / "experiment"
     pol_dir = ENV_CFG.parents[1] / "policy"
@@ -70,4 +75,4 @@ def test_only_condition_f_uses_privileged_input():
         cfg = OmegaConf.load(path)
         policy = [d["override /policy"] for d in cfg.defaults if "override /policy" in d][0]
         mode = OmegaConf.load(pol_dir / f"{policy}.yaml").input
-        assert (mode == "privileged_latency") == (path.stem == "F"), path.name
+        assert (mode == "privileged_latency") == (path.stem in ORACLE_CONFIGS), path.name

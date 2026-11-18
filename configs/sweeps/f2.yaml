@@ -14,7 +14,7 @@ jobs:
   - {"experiment": "f2/D_r40", "seeds": [1], "overrides": ["env.impl=jax", "mjx_eval.traces.enabled=true"]}
   - {"experiment": "f2/E_r40", "seeds": [1], "overrides": ["env.impl=jax", "mjx_eval.traces.enabled=true"]}
   - {"experiment": "f2/F_r40", "seeds": [1], "overrides": ["env.impl=jax", "mjx_eval.traces.enabled=true"]}
-  - {"gate": "uv run python scripts/gpu/learn_gate.py --seeds 0 1 A_mlp C_r40_mlp D_r40_hist4 E_r40_gru F_r40_mlppriv"}
+  - {"gate": "uv run python scripts/gpu/learn_gate.py --seeds 0,1 A_mlp C_r40_mlp D_r40_hist4 E_r40_gru F_r40_mlppriv"}
   - {"tier": 1, "label": "all conditions to 5 seeds"}
   - {"experiment": "A", "seeds": [2], "overrides": ["env.impl=jax", "mjx_eval.traces.enabled=true"]}
   - {"experiment": "f2/C_r40", "seeds": [2], "overrides": ["env.impl=jax", "mjx_eval.traces.enabled=true"]}

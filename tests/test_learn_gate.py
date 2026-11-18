@@ -34,3 +34,18 @@ def test_gate(tmp_path):
     assert not ok  # a missing or unfinished pilot run fails the gate
     ok, _ = gate.check(tmp_path, ["X_mlp"], [0, 1], "abc1234", 25.0, 2)
     assert not ok
+
+
+def test_cli_as_the_sweep_calls_it(tmp_path, capsys):
+    """The exact argument order of the F2 sweep line (D51: names after --seeds)."""
+    _run(tmp_path / "X_mlp_s0_abc1234", 28.0)
+    _run(tmp_path / "X_mlp_s1_abc1234", 19.5)
+    _run(tmp_path / "Y_gru_s0_abc1234", 19.5)
+    _run(tmp_path / "Y_gru_s1_abc1234", 20.0)
+    base = ["--runs-dir", str(tmp_path), "--commit", "abc1234", "--seeds", "0,1"]
+    for names, code in ((["X_mlp"], 0), (["X_mlp", "Y_gru"], 1)):
+        try:
+            gate.main(base + names)
+        except SystemExit as e:
+            assert e.code == code
+    assert "FAIL Y_gru" in capsys.readouterr().out

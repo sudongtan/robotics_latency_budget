@@ -6,7 +6,8 @@
 Per run and trace set: ridge probe (H6 test, nested episode-level CV) and a 1x64 MLP probe
 (secondary) on the policy's representation; for the probed conditions (D, E) also on a
 randomly initialized network of the same architecture fed the same observations.
-Writes runs/_analysis/probe_per_run.csv and runs/_analysis/h6.json.
+Writes <out>/probe_per_run.csv and <out>/h6.json (out: runs/_analysis by default; F2 uses
+runs/_analysis_f2 so the first version's files are kept).
 """
 
 from __future__ import annotations
@@ -22,7 +23,6 @@ import time
 from omegaconf import OmegaConf
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-OUT = ROOT / "runs" / "_analysis"
 
 
 def _expand(pattern: str) -> list[pathlib.Path]:
@@ -153,6 +153,7 @@ def main() -> None:
             print(f"done {res[0]['run_id']}", flush=True)
             rows += res
     df = pd.DataFrame(rows).sort_values(["condition", "seed", "set", "source", "rep"])
+    OUT = ROOT / cfg["out"]
     OUT.mkdir(parents=True, exist_ok=True)
     df.to_csv(OUT / "probe_per_run.csv", index=False)
     res = h6(df, cfg)

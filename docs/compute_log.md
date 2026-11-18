@@ -6,6 +6,7 @@ One row per GPU session. Mac work is not logged.
 |---|---|---|---|---|---|---|
 | S (Phase 4 + ablations) | 2026-11-05 – 11-06 | vast.ai on-demand, 1 × RTX 4090 24 GB (instance 59310838) | backend bench, calibration + gate, tiers 1–4: 96 training runs + 3 Brax references (all `DONE`, 0 failed) | 19.12 billed (sweep 18.55) | $7.29 (GPU $6.88 at $0.36/h, storage $0.35, transfer $0.05) | commit `4a4a467`; F41 gate passed, F42 complete; ≈ 600k env-steps/s; all tiers fit (cap 50 h) |
 | F1 (follow-up, exploratory) | 2026-11-17 | vast.ai on-demand, 1 × RTX 4090 24 GB (instance 61061564) | bootstrap + 20 training runs with full eval grid (C, C_ft, C_r40, C_hcrit × 5 seeds; all `DONE`, 0 failed) | sweep 3.21 (11:31–14:44 UTC); billed ≈ 4.3 incl. setup and idle (from $1.68 at $0.39/h) | $1.68 (vast billing) | commit `650d2d7`; D46; final sync verified before destroy |
+| F2 (prereg method comparison, 0–40 ms training) | 2026-11-17 – 11-18 | vast.ai on-demand, 1 × RTX 4090 24 GB (instance 61113798) | 50 training runs with full eval grid + traces (A, C_r40, D_r40, E_r40, F_r40 × 10 seeds; all `DONE`, 0 failed); learnability gate passed (run by hand after a usage bug, D51) | sweep 11.15 (19:15–06:24 UTC); instance ≈ 11.4 incl. setup | ≈ $4.4 estimated at $0.387/h (vast billing pending) | commit `bc378de`; D49–D51; final sync verified (1011 files, box == Mac) before destroy |
 
 ## Planned
 

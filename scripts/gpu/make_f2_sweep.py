@@ -48,7 +48,7 @@ def per_seed_min() -> float:
 
 def lines() -> list[str]:
     names = " ".join(n for _, n, _ in CONDS)
-    seeds = " ".join(map(str, PILOT))
+    seeds = ",".join(map(str, PILOT))
     out = ["jobs:", "  # Pilot: seeds 0-1 of every condition, then the learnability gate (F50)"]
     for s in PILOT:
         out += _round(s)

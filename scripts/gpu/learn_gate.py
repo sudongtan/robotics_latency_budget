@@ -1,6 +1,6 @@
 """Learnability gate (F50): stop the sweep if a condition's pilot seeds never walked.
 
-    uv run python scripts/gpu/learn_gate.py --seeds 0 1 A_mlp A_hist4 C_r40_mlp ...
+    uv run python scripts/gpu/learn_gate.py --seeds 0,1 A_mlp C_r40_mlp ...
 
 Each name is `<experiment>_<policy>` (the run id without seed and commit). A condition
 passes if at least --min-walk of its pilot runs at this commit are finished (DONE) and end
@@ -42,15 +42,17 @@ def check(
     return ok, lines
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("names", nargs="+")
-    ap.add_argument("--seeds", type=int, nargs="+", required=True)
+    # One comma-separated value: with nargs="+" the seed list swallowed the names after it
+    # and the F2 gate failed on a usage error (D51).
+    ap.add_argument("--seeds", type=lambda v: [int(x) for x in v.split(",")], required=True)
     ap.add_argument("--min-walk", type=int, default=1)
     ap.add_argument("--walk", type=float, default=25.0)
     ap.add_argument("--runs-dir", type=pathlib.Path, default=ROOT / "runs")
     ap.add_argument("--commit", default=None)
-    a = ap.parse_args()
+    a = ap.parse_args(argv)
     commit = (
         a.commit
         or subprocess.check_output(

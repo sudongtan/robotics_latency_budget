@@ -1,0 +1,35 @@
+# F2 videos (scripts/make_videos.py). Native MuJoCo on the Mac, no GPU.
+# Seed per condition: fixed by rule, not by eye: the lower median of the 10 seeds ranked by L50
+# (rank 5 of 10, ties broken by seed number), from runs/_analysis_f2/per_run.csv.
+# Episode: one index drawn once with episode_seed from the first `episode_pool` MJX grid episodes,
+# the same for every panel (same start state, velocity commands, dynamics draw).
+commit: bc378de
+analysis: runs/_analysis_f2
+out: runs/_videos_f2
+gif_dir: docs/figures
+episode_seed: 20261118
+episode_pool: 16
+duration_s: 15
+width: 320
+height: 240
+fps: 50
+camera: track
+native: configs/native_eval/default.yaml   # fall definition, eval seed, MJX key splits
+conds:
+  A: {stem: A_mlp, label: "A  no delay in training"}
+  C_r40: {stem: C_r40_mlp, label: "C  random delay"}
+  D_r40: {stem: D_r40_hist4, label: "D  random delay + history"}
+  E_r40: {stem: E_r40_gru, label: "E  random delay + GRU"}
+videos:
+  grid:        # methods x delay: the headline video (GIF for the README)
+    rows: [A, C_r40, E_r40]
+    delays_ms: [0, 20, 40, 60]
+    gif: true
+  cliff:       # where the no-delay controller breaks
+    rows: [A]
+    delays_ms: [0, 8, 16, 24, 32, 40]
+    gif: false
+  standing:    # the history policy's learning failure, at zero delay
+    rows: [C_r40, D_r40]
+    delays_ms: [0]
+    gif: false

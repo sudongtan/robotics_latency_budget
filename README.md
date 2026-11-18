@@ -28,6 +28,15 @@ analysis they produced and what was wrong with the design are on a separate page
 
 ## Results
 
+![The same walking episode for A, C and E at 0, 20, 40 and 60 ms of action delay](docs/figures/f2_grid.gif)
+
+*One 20 s episode (a 0.45 m/s turning walk; first 8 s shown), the same for every panel, at 0, 20, 40
+and 60 ms of action delay. Rows: A (no delay in training), C (random delay), E (random delay + GRU).
+Each panel gives the method's success rate over all 10 seeds and the outcome of this episode. The
+seed per method is fixed by rule (median L50) and the episode was drawn at random once; a single
+episode varies, e.g. here C and E both just miss the tracking limit at 60 ms although E succeeds
+more often there (60 % vs 41 %). Full 20 s videos: `uv run python scripts/make_videos.py`.*
+
 ![Success rate vs. test action latency, F2](docs/figures/f2_success_vs_action_latency.png)
 
 Five methods, same PPO recipe, reward, network size and training budget, 10 seeds each, tested on

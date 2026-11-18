@@ -9,11 +9,12 @@ out: runs/_videos_f2
 gif_dir: docs/figures
 episode_seed: 20261118
 episode_pool: 16
-duration_s: 15
+duration_s: 20                # = eval episode length: the per-episode verdict is the success test
 width: 320
 height: 240
 fps: 50
 camera: track
+gif: {seconds: 8, fps: 6, scale: 0.4}   # README GIF: first 8 s at 6 fps, 0.4 x size
 native: configs/native_eval/default.yaml   # fall definition, eval seed, MJX key splits
 conds:
   A: {stem: A_mlp, label: "A  no delay in training"}
@@ -28,8 +29,6 @@ videos:
   cliff:       # where the no-delay controller breaks
     rows: [A]
     delays_ms: [0, 8, 16, 24, 32, 40]
-    gif: false
   standing:    # the history policy's learning failure, at zero delay
     rows: [C_r40, D_r40]
     delays_ms: [0]
-    gif: false

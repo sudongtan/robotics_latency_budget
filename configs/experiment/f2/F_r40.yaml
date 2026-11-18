@@ -1,0 +1,9 @@
+# @package _global_
+# F2, fix (a): condition F (MLP + true latency) trained from scratch with action delay U{0..40 ms}
+# (as follow-up arm C_r40, F51/F52).
+defaults:
+  - override /policy: privileged
+experiment: {name: F_r40}
+env:
+  latency:
+    action: {lo: 0, hi: 10}

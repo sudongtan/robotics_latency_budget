@@ -1,69 +1,98 @@
 # Latency Budget: how much delay can a learned robot controller handle?
 
-Robots always act on slightly outdated information, because sensing, computing and moving
-take time. This project measures how much delay a learned robot controller can handle
-before it fails, and which training method makes it most tolerant. Today engineers mostly
-find this out by trial and error.
+Robots act on slightly outdated information, because sensing, computing and moving take time.
+This project measures how much delay a learned walking controller (simulated Unitree Go1, PPO,
+MuJoCo/MJX) tolerates before it fails, and which training method makes it most tolerant.
 
-## The question
+Between the moment a robot senses its body and the moment its motors respond, tens of
+milliseconds pass. In simulation this delay is usually zero; on real hardware it is not. Today
+engineers mostly find out how much delay a controller tolerates by trial and error.
 
-A four-legged robot (Unitree Go1, simulated in MuJoCo) learns to walk with reinforcement
-learning (PPO). Between the moment it senses its body and the moment its motors respond,
-tens of milliseconds pass. In simulation this delay is usually zero; on real hardware it
-is not.
+## Research question
 
-The project asks:
+**How well does each method cope with delay?** Three common ways to make a learned controller
+tolerate delay are trained under identical conditions and measured on the same tests:
 
-- **How does performance degrade as delay grows?** Gradually, or does it fall off a cliff?
-- **Which fix works best for the training cost?** Three common approaches are compared
-  under identical conditions:
-  1. **Randomizing the delay** during training.
-  2. **Giving the policy a short history** of its recent actions.
-  3. **Giving the policy memory** (a recurrent network, GRU).
-- **Does it matter where the delay is?** Late sensor readings vs. late motor commands,
-  and pure delay vs. a slow motor response.
-- **Do memory-based policies learn to estimate their own delay?** Checked by probing
-  their internal activations.
+1. **Randomizing the delay** during training (C).
+2. **Adding a short history** of recent observations to what the policy sees (D).
+3. **Giving the policy memory**, a recurrent network (GRU) (E).
 
-## Approach
+They are compared with a controller trained without delay (A) and with an "oracle" that is told the
+true delay (F). For each method: does it learn to walk, how much delay does it tolerate, what does
+it cost at zero delay and in training time, and does it learn to estimate the delay internally?
 
-- Six training conditions (naive baseline, fixed-delay specialists, randomization only,
-  history, GRU, and an "oracle" that is told the true delay), all trained with the same
-  algorithm, reward, network size and training budget, so differences come from the
-  method alone.
-- Each policy is tested across a grid of delays from 0 to 120 ms, including delays longer
-  than any seen in training, plus changed friction, payload and motor strength.
-- Hypotheses, the definition of success and the rule for judging each hypothesis are
-  written down and frozen **before** the main experiments run
-  ([`docs/preregistration.md`](docs/preregistration.md)); results are reported whether they
-  support them or not.
-- Statistics: 5 random seeds per condition, 10 for the four main comparison methods;
-  interquartile mean with bootstrap confidence intervals; no best-seed numbers.
-- Before the main experiments, our PPO is checked against the reference implementation
-  (Brax PPO) on the baseline condition; the experiments run only if it matches.
-- Every figure regenerates from saved runs with one command.
+The project began with six pre-registered hypotheses. They turned out to be poorly designed, and
+most of their tests say little; the results below are reported without them. The hypotheses, the
+analysis they produced and what was wrong with the design are on a separate page:
+[`docs/hypotheses.md`](docs/hypotheses.md).
 
-## Planned deliverables
+## Results
 
-- **Headline figure:** success rate vs. delay, one curve per method, with confidence intervals.
-- **Side-by-side videos:** baseline vs. best method at ~60 ms delay.
-- **Reproducible code:** one command per figure; reported compute cost.
+![Success rate vs. test action latency, F2](docs/figures/f2_success_vs_action_latency.png)
 
-## Progress
+Five methods, same PPO recipe, reward, network size and training budget, 10 seeds each, tested on
+action delays from 0 to 120 ms. Success = no fall in 20 s and velocity tracked within a fixed
+tolerance. **L50** = the delay at which success drops to 50 %. Numbers are interquartile means over
+all seeds with 95 % bootstrap CIs; no best-seed numbers.
 
-| Phase | Status |
+| Method (trained on random delay 0–40 ms, except A) | Seeds that learn to walk | L50 (ms) | Success at 0 ms |
+|---|---|---|---|
+| A: no delay in training, MLP | 10/10 | 20 [20, 21] | 94 % |
+| C: random delay, MLP | 8/10 | 56 [36, 57] | 89 % |
+| D: random delay, MLP + last 4 observations | **2/10** | 0 [0, 22] | 3 % |
+| **E: random delay, GRU (memory)** | 9/10 | **66 [54, 67]** | **93 %** |
+| F: random delay, MLP told the true delay | 8/10 | 51 [26, 54] | 86 % |
+
+1. **A controller trained without delay fails at about one control step.** It acts every 20 ms, and
+   its success drops from 94 % to 50 % at 20 ms of delay and to almost 0 by 32 ms.
+2. **Training with random delay triples the tolerable delay** (L50 20 → 56 ms for the plain MLP) at a
+   small cost at zero delay (89 % vs 94 %).
+3. **Memory (GRU) is the best method:** the highest tolerance (66 ms, well beyond the 40 ms seen in
+   training), almost no cost at zero delay, and the most reliable training (9/10 seeds). It costs
+   about 1.9× the training time of an MLP.
+4. **The GRU learns to estimate the delay.** A linear probe reads the true delay from its memory
+   (R² 0.78), far above the no-delay controller (0.41) and an untrained GRU (0.43).
+5. **A short observation history fails to learn**: 8 of 10 seeds learn to stand still instead of
+   walking. The 2 seeds that walk are as robust as the GRU (L50 ≈ 66 ms), but two seeds prove nothing.
+6. **Telling the policy the true delay does not help** (F is no better than C).
+7. **Training on too wide a delay range breaks learning.** The original study randomized delay over
+   0–80 ms; there, the MLP-based methods never learned to walk (0/10) and only the GRU did (7/10).
+   Narrowing to 0–40 ms (above), or fine-tuning a controller that already walks, fixes it: a
+   fine-tuned MLP reaches L50 ≈ 81 ms (exploratory, 5 seeds).
+
+Full numbers and caveats: [`docs/results.md`](docs/results.md) (original study) and
+`runs/_analysis_f2/` (F2, `scripts/analyze_f2.py`). Limits: one simulator family, one
+robot, one PPO recipe and budget; delay tested on the action side only in F2.
+
+## How the study was run
+
+- **Fixed definitions.** The definition of success, the delay grid and the statistics were frozen
+  before the experiments ([`docs/preregistration.md`](docs/preregistration.md)) and are unchanged.
+  The pre-registered hypotheses are no longer used to report results (see
+  [`docs/hypotheses.md`](docs/hypotheses.md)).
+- **Controlled.** Same algorithm, reward, network size and training budget for every method; our
+  PPO was checked against the reference Brax PPO (98 % of its return) before any experiment.
+- **Checked twice.** The original study's test-time results replicate in native MuJoCo (the CPU simulator) on the same
+  episodes.
+- **Cheap and reproducible.** Three rented RTX 4090 sessions, about 35 GPU hours and $13 in total
+  ([`docs/compute_log.md`](docs/compute_log.md)); every number and figure regenerates from saved
+  runs with one command.
+
+### History
+
+| Stage | What happened |
 |---|---|
-| 0. Setup: environment, tooling, simulator running | Done: simulator runs and renders on laptop; environment documented; tooling and experiment tracking set up |
-| 1. Delay and motor-lag simulation, with tests | Done: action/observation delay (4 ms resolution, jitter), explicit motor control with motor lag; 58 tests incl. no-future-leakage and parity with the original simulator; demo video of a feedback controller failing at 80 ms delay |
-| 2. Own PPO implementation, validated against a reference | Laptop part done: JAX PPO with MLP, history and GRU policies, matching the Playground/Brax reference setup; tested against NumPy and Brax references; all three policies learn in short laptop runs; evaluation grid, gate and full GPU sweep built and rehearsed. Validation against Brax runs at the start of the single GPU session |
-| 3. Pre-registration of hypotheses | Done: hypotheses, success definition and decision rules frozen before any main-sweep run (`docs/preregistration.md`) |
-| 4. Main experiment sweep (GPU) | Done: one RTX 4090 session, 18.5 h, no failed runs. Our PPO reaches 98 % of Brax PPO's return (automatic gate passed); all conditions trained at the pre-registered seed counts (10 seeds for the main comparisons), each with the full latency evaluation grid |
-| 5. Evaluation and first results | Done: pre-registered analysis with bootstrap CIs; verdicts for H1–H5 (none supported as stated; H5 inconclusive). Main finding: under randomized delay most policies never learn to walk (the GRU does in 7 of 10 seeds). Test-time action-delay results replicate in native MuJoCo (per-cell success gap SD 1.2 pp, worst 7.8 pp; `docs/results.md`) |
-| 6. Ablations | Done (same GPU session): observation-delay, motor-lag and history-length variants; analysed with Phase 5 |
-| 7. Analysis: cross-evaluation, probing, gait | Closed for this version: all hypotheses have verdicts (H6 not supported), robustness over training done; gait analysis and time-resolved probes deferred |
-| 8. Paper, videos, write-up | Deferred |
+| Original study (Nov 2026) | 8 conditions + ablations, 0–80 ms randomized delay. Most methods never learned to walk; closed as a negative result ([`docs/results.md`](docs/results.md)) |
+| Follow-up F1 | Diagnosis: the 0–80 ms range, not the critic, caused the failure; narrower range and fine-tuning both fix it |
+| F2 | Method comparison rerun on 0–40 ms, 10 seeds per method (results above) |
+| Not done | Videos, gait analysis, observation-side delay under 0–40 ms, a paper |
 
-Current state: closed as a first version, reported as a negative result: with one fixed PPO recipe, randomizing delay over 0–80 ms stops MLP policies from learning to walk, and a GRU escapes in 7 of 10 seeds at about twice the training cost. Next steps are listed at the end of `docs/results.md`.
+## References
+
+Prior work, the theory behind each method, and the tools used: [`docs/references.md`](docs/references.md).
+The closest prior work is Li & Sun (arXiv 2610.32277, 2026), who showed delay randomization widens
+the delay margin of a humanoid motion tracker; this project replicates that on a quadruped and adds
+the history, memory, oracle and probing comparisons.
 
 ## Tech stack
 
@@ -76,7 +105,7 @@ Requires [uv](https://docs.astral.sh/uv/) and macOS (Apple Silicon) or Linux.
 
 ```bash
 uv sync                                         # install pinned dependencies
-uv run pytest -q                                # 116 tests (~4 min): delays, no future leakage,
+uv run pytest -q                                # 180 tests (~6 min): delays, no future leakage,
                                                 # parity, PPO vs. NumPy/Brax references, evaluation
 uv run python scripts/delay_feedback_demo.py    # demo video -> runs/phase1_delay_demo_*/
 scripts/mjpython.sh scripts/view_env.py         # macOS: interactive viewer of the robot model
@@ -89,7 +118,7 @@ uv run python scripts/plot_curves.py runs/smoke_A_*      # -> runs/<id>/curves.p
 
 A full run (`uv run python scripts/train.py experiment=C seed=0`) trains for 200M steps with
 8192 parallel simulations, then evaluates the policy on the whole delay grid; it is meant for
-a GPU. Conditions are `A`, `B20`, `B40`, `B60`, `C`, `D`, `E`, `F` and `ablations/*`. Each run
+a GPU. Conditions are `A`, `B20`, `B40`, `B60`, `C`, `D`, `E`, `F`, `ablations/*`, `followup/*` and `f2/*`. Each run
 writes `runs/<experiment>_<policy>_s<seed>_<commit>/`: config, commit hash, training curves,
 checkpoints and per-episode evaluation results (`eval_mjx.parquet`).
 
@@ -113,7 +142,8 @@ run in progress is repeated.
 
 ## Repository guide
 
-- `docs/` — pre-registration (frozen), environment notes, compute log, results (as they are written).
+- `docs/` — pre-registration (frozen), original hypotheses and their problems, results, references,
+  environment notes, compute log.
 - `src/latrl/envs/` — the simulation layer: `latency.py` (delay buffers), `actuator.py`
   (motor control and motor lag), `go1.py` (the robot environment with delays added),
   `specs.py` (observation layout and delay settings shared by all code).

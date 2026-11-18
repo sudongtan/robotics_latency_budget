@@ -4,6 +4,8 @@ defaults:
   - env: go1_flat
   - ppo: default
   - policy: mlp
+  - critic: default
+  - init: scratch
   - experiment: A
   - mjx_eval: full
   - override hydra/job_logging: none    # no train.log in the repo root

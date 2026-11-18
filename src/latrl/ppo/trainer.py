@@ -154,12 +154,23 @@ class Trainer:
         env_cfg: Mapping[str, Any],
         ppo_cfg: Mapping[str, Any],
         policy_cfg: Mapping[str, Any],
+        critic_cfg: Mapping[str, Any] | None = None,
     ) -> None:
         self.env = env
         self.cfg = PPOConfig.from_dict(ppo_cfg)
         self.inp = PolicyInput.from_config(policy_cfg, env_cfg)
         self.actor = make_actor(policy_cfg, self.inp.size)
-        self.critic = Critic(PRIVILEGED_OBS_SIZE, self.cfg.value_hidden)
+        # Follow-up F1 (exploratory): optionally append the k actions sent before the last one
+        # (from the env's action delay line) to the critic input. k = 0 is the pre-registered
+        # critic (D23). The actor never sees these (R4).
+        self.critic_history = int((critic_cfg or {}).get("action_history", 0))
+        if self.critic_history and self.critic_history > env._k_act - 1:
+            raise ValueError(
+                f"critic.action_history={self.critic_history} exceeds the action delay line "
+                f"({env._k_act} slots incl. the last action)"
+            )
+        self.critic_size = PRIVILEGED_OBS_SIZE + NUM_ACTIONS * self.critic_history
+        self.critic = Critic(self.critic_size, self.cfg.value_hidden)
         self.domain_randomization = bool(env_cfg["domain_randomization"])
         self.optimizer = optax.chain(
             optax.clip_by_global_norm(self.cfg.max_grad_norm),
@@ -224,6 +235,16 @@ class Trainer:
             return x
         return normalizer.normalize(norm.policy, x)
 
+    def critic_input(self, env_state: Any) -> jax.Array:
+        """[N, critic_size]: `privileged_state`, plus (follow-up F1) the `critic_history`
+        actions sent before the last one, newest first. `privileged_state` already holds the
+        last action; with action delay the older ones may still be in flight."""
+        priv = env_state.obs["privileged_state"]
+        if not self.critic_history:
+            return priv
+        past = env_state.info["latency"].actions.values[:, 1 : 1 + self.critic_history]
+        return jp.concatenate([priv, past.reshape(past.shape[0], -1)], axis=-1)
+
     def _norm_critic(self, norm: Norm, x: jax.Array) -> jax.Array:
         if not self.cfg.normalize_observations:
             return x
@@ -239,7 +260,7 @@ class Trainer:
         ts = TrainState(
             params=params,
             opt_state=self.optimizer.init(params),
-            norm=Norm(normalizer.init(self.inp.size), normalizer.init(PRIVILEGED_OBS_SIZE)),
+            norm=Norm(normalizer.init(self.inp.size), normalizer.init(self.critic_size)),
             key=k_train,
         )
         carry = Carry(
@@ -283,8 +304,8 @@ class Trainer:
         )
         tr = Transition(
             x=x,
-            crit_x=carry.env_state.obs["privileged_state"],
-            next_crit_x=nxt.obs["privileged_state"],
+            crit_x=self.critic_input(carry.env_state),
+            next_crit_x=self.critic_input(nxt),
             raw_action=raw,
             log_prob=logp,
             reward=nxt.reward,

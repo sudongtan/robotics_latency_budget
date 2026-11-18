@@ -1,0 +1,4 @@
+# @package _global_
+# Train from a random init. Follow-up F1 fine-tune arms set init_from to a finished run dir
+# (its final checkpoint is loaded; see scripts/train.py:_init_from).
+init_from: null

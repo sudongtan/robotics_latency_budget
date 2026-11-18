@@ -38,6 +38,41 @@ def _jsonable(m: dict) -> dict:
     return out
 
 
+def _init_from(ts, trainer, cfg: DictConfig, run_dir: pathlib.Path):
+    """Start from the final checkpoint of a finished run: actor, critic and normalizer
+    statistics are loaded; the optimizer state starts fresh (checkpoints do not hold it).
+    The source must have the same policy and critic, so the parameter trees match."""
+    import hashlib
+
+    from latrl.ppo import checkpoint
+
+    src = ROOT / str(cfg.init_from)
+    if not (src / "DONE").exists():
+        raise FileNotFoundError(f"init_from: {src} is not a finished run (no DONE)")
+    src_cfg = OmegaConf.load(src / "config.yaml")
+    for key in ("arch", "input", "hidden", "gru_size", "history_len"):
+        a, b = src_cfg.policy.get(key), cfg.policy.get(key)
+        if a != b:
+            raise ValueError(f"init_from: policy.{key} differs ({a} vs {b})")
+    k_src = int(src_cfg.get("critic", {}).get("action_history", 0))
+    if k_src != trainer.critic_history:
+        raise ValueError(f"init_from: critic.action_history differs ({k_src})")
+    ck = sorted((src / "checkpoints").glob("it*.msgpack"))[-1]
+    restored = checkpoint.load(ck, ts)
+    params = restored["params"]
+    record = {
+        "source": str(cfg.init_from),
+        "checkpoint": ck.name,
+        "sha256": hashlib.sha256(ck.read_bytes()).hexdigest(),
+        "source_meta": json.loads((src / "meta.json").read_text()),
+    }
+    (run_dir / "init_from.json").write_text(json.dumps(record, indent=2))
+    print(f"init_from {src.name}/{ck.name}", flush=True)
+    return ts.replace(
+        params=params, opt_state=trainer.optimizer.init(params), norm=restored["norm"]
+    )
+
+
 @hydra.main(config_path="../configs", config_name="train", version_base=None)
 def main(cfg: DictConfig) -> None:
     sha, dirty = git_commit()
@@ -63,7 +98,7 @@ def main(cfg: DictConfig) -> None:
     print(f"run {run_id} (dirty={dirty}) -> {run_dir}")
 
     env = make_env(cfg.env)
-    trainer = Trainer(env, cfg.env, cfg.ppo, cfg.policy)
+    trainer = Trainer(env, cfg.env, cfg.ppo, cfg.policy, cfg.critic)
     c = trainer.cfg
 
     # R9: fixed key streams.
@@ -73,6 +108,8 @@ def main(cfg: DictConfig) -> None:
     eval_models, eval_in_axes = trainer.models(k_dr_eval, int(cfg.train.eval_envs))
 
     ts, carry = jax.jit(lambda k: trainer.init(k, models, in_axes))(k_init)
+    if cfg.init_from:  # follow-up F1: fine-tune from a finished run's final checkpoint
+        ts = _init_from(ts, trainer, cfg, run_dir)
     counts = {
         "actor": num_params(ts.params["actor"]),
         "critic": num_params(ts.params["critic"]),

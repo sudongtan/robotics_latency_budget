@@ -1,0 +1,2 @@
+# Critic input options. The pre-registered critic (D23): privileged_state only.
+action_history: 0           # follow-up F1: extra past actions in the critic input

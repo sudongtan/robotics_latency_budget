@@ -167,3 +167,76 @@ per-episode linear-velocity tracking error of condition A's non-fallen episodes 
 delay, jitter off, pooled over A's 5 seeds (1,278 of 1,280 episodes; 2 fell). Per-seed 95th
 percentiles 0.149–0.160; pooled median 0.099. Computed before any other condition's results were
 loaded; recorded in `configs/analysis/default.yaml`. Runs: `A_mlp_s{0..4}_4a4a467`.
+
+### 2026-11-17: follow-up F1 plan (exploratory; written before any F1 data)
+
+Not a hypothesis test and not part of the pre-registered analysis. Purpose: find why condition C
+(action delay U{0..80 ms}, plain MLP) never learns to walk (results: learning failure), using the
+three explanations suggested by the prior work and our training logs.
+
+| Arm | Change from C | Explanation it tests |
+|---|---|---|
+| C (control) | none; retrained at the follow-up commit | code changes did not alter C |
+| C_ft | start from A's final checkpoint (same seed), then 200M steps | learning from scratch under wide delay (Li & Sun fine-tune) |
+| C_r40 | action delay U{0..40 ms} | the range is too wide |
+| C_hcrit | critic also sees the 5 actions sent before the last one | the critic cannot account for actions still in flight |
+
+5 seeds per arm, same PPO config (R1), full in-job eval grid on the session-S episodes.
+
+**Primary measure:** seeds that walk (final eval return > 25, the split in the results), per arm.
+**Readings, fixed now:** the control must stand in ≥ 4/5 seeds, else the code changes moved C and the
+arms are not interpretable. An arm "fixes learning" if ≥ 4/5 seeds walk, "partly" at 2–3/5, "no" at ≤ 1/5.
+Secondary: L50, delay margin and 0 ms success of walking seeds, reported per arm with all seeds.
+**Expectation (Claude, before data):** C_ft most likely to walk; C_r40 partly (B40 walked in 2/5);
+C_hcrit uncertain. Results reported whichever way they come out.
+
+### 2026-11-17: F2 method comparison plan (pre-registered; written before any F2 data)
+
+The first version could not test H2–H4 and H6 because C, D and F never learned to walk
+(results: learning failure). Follow-up F1 found that C learns when trained from scratch on a
+narrower delay range (C_r40: 4/5 seeds walk, L50 54 ms) or fine-tuned from a no-delay walker
+(C_ft: 5/5). F2 reruns the method comparison with the first fix, keeping the hypotheses,
+metrics and decision rules of §2, §5 and §6. Scope decided by the owner (D47, D49): fix (a) only;
+the fine-tune fix was considered and dropped before any F2 data.
+
+**Conditions.** As §3 (same reward, PPO configuration, networks, critic; D keeps H = 4), except the
+training action delay of C, D, E, F is U{0..40 ms} instead of U{0..80 ms}. 10 seeds each (0–9).
+
+| ID | Training action delay | Actor input | Actor |
+|---|---|---|---|
+| A | 0 | observation | MLP |
+| C_r40 | U{0..40 ms} per episode | observation | MLP |
+| D_r40 | U{0..40 ms} | last 4 observation frames | MLP |
+| E_r40 | U{0..40 ms} | observation | GRU |
+| F_r40 | U{0..40 ms} | observation + true latency | MLP |
+
+**Session.** One commit for every F2 run (R5): A and C_r40 are retrained there; session-S and F1 runs
+are not pooled. Probing traces on for every run (H6). Pilot = seeds 0–1 of every condition.
+Learnability gate (F50): every condition must walk (final eval return > 25) in at least one pilot
+seed, else the queue stops and the owner decides; hypotheses needing a condition that fails the gate
+are "untestable". Then tier 1 (to 5 seeds) and tier 2 (to 10). If the session ends after tier 1, the
+analysis uses 5 seeds and says so.
+
+**Evaluation and metrics.** Same in-job eval grid (0–120 ms) and episodes, τ = 0.1552 (§ 2026-11-06;
+τ recomputed from F2's A is reported as a check, not used), L50, delay margin, nominal error, IQM with
+stratified bootstrap CIs over **all** seeds (no selection). Reported alongside, per condition: walk rate,
+and the same metrics over walking seeds only (secondary, descriptive). Test delays above 40 ms are
+outside every condition's training range; that is the same for all four methods.
+
+**Hypotheses under F2.** The §6 rules, with C_r40, D_r40, E_r40 in place of C, D, E:
+- H2: L50(C_r40) − L50(A) > 0 and nominal tracking error C_r40 − A > 0, both CIs excluding 0.
+- H3: recovery R = (err_C_r40 − err_D_r40) / (err_C_r40 − err_A) ≥ 0.5, CI lower bound > 0 (only if
+  H2's nominal cost holds).
+- H4: 90 % CI of L50(E_r40) − L50(D_r40) within ±10 ms (censoring fallback of the 2026-11-05 note) and
+  wall-clock ratio E_r40 / D_r40 > 1, CI excluding 1.
+- H6: §6 rule on D_r40 and E_r40 features, same probe settings, trace set and controls (A's features;
+  a random network of the same architecture).
+- H1 and H5 are not retested (A's training is unchanged; no cross-channel runs). F_r40 is reported
+  descriptively, as F in §3.
+
+Verdicts are labelled "F2 (0–40 ms training)" and do not replace the first version's verdicts.
+
+**Expectation (Claude, before data):** A walks in every seed; C_r40 in most (F1: 4/5); E_r40 likely
+(E walked in 7/10 even on 0–80 ms); D_r40 and F_r40 uncertain (0/10 on 0–80 ms; they see at least as
+much as C). H2 supported (F52: 0 ms success 0.89 vs 0.95 for A; L50 54 vs 20 ms). H3, H4, H6
+uncertain. Results reported whichever way they come out.

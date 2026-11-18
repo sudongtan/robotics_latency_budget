@@ -25,6 +25,7 @@ h6:
   probed: [D, E]
   controls: [A, random]
   margin: 0.2                 # R2 must exceed each control by >= 0.2 (IQM over seeds)
+out: runs/_analysis           # where probe_per_run.csv and h6.json go
 n_boot: 5000
 workers: 8                    # processes (one run each)
 ci: 0.95

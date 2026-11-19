@@ -28,14 +28,17 @@ analysis they produced and what was wrong with the design are on a separate page
 
 ## Results
 
-![The same walking episode for A, C and E at 0, 20, 40 and 60 ms of action delay](docs/figures/f2_grid.gif)
+![The same walking episode for A, C and E at 0, 40, 80 and 100 ms of action delay](docs/figures/f2_grid.gif)
 
-*One 20 s episode (a 0.45 m/s turning walk; first 8 s shown), the same for every panel, at 0, 20, 40
-and 60 ms of action delay. Rows: A (no delay in training), C (random delay), E (random delay + GRU).
-Each panel gives the method's success rate over all 10 seeds and the outcome of this episode. The
-seed per method is fixed by rule (median L50) and the episode was drawn at random once; a single
-episode varies, e.g. here C and E both just miss the tracking limit at 60 ms although E succeeds
-more often there (60 % vs 41 %). Full 20 s videos: `uv run python scripts/make_videos.py`.*
+*One 20 s episode (a 0.45 m/s turning walk), the same for every panel, at 0, 40, 80 and 100 ms of
+action delay (training covered 0–40 ms). Rows: A (no delay in training), C (random delay), E (random
+delay + GRU). Each panel gives the method's success rate over all 10 seeds and the outcome of this
+episode. A falls at 80 and 100 ms within the first 1.3 s and at 40 ms after 17.7 s; C falls at 100 ms
+after 15.6 s; E stays up at every delay. A video shows falls; it cannot show tracking error: "fail"
+without a fall (C and E at 80 ms, E at 100 ms) means the average speed error exceeded 0.155 m/s,
+which is not visible by eye. The seed per method is fixed by rule (median L50) and the episode was
+drawn at random once, so this is one example, not a summary. Full-size videos:
+`uv run python scripts/make_videos.py`.*
 
 ![Success rate vs. test action latency, F2](docs/figures/f2_success_vs_action_latency.png)
 

@@ -14,7 +14,7 @@ width: 320
 height: 240
 fps: 50
 camera: track
-gif: {seconds: 8, fps: 6, scale: 0.4}   # README GIF: first 8 s at 6 fps, 0.4 x size
+gif: {seconds: 20, fps: 4, scale: 0.5, font: 11}  # README GIF: whole episode (falls come late), 4 fps, half size, labels drawn after shrinking
 native: configs/native_eval/default.yaml   # fall definition, eval seed, MJX key splits
 conds:
   A: {stem: A_mlp, label: "A  no delay in training"}
@@ -24,7 +24,7 @@ conds:
 videos:
   grid:        # methods x delay: the headline video (GIF for the README)
     rows: [A, C_r40, E_r40]
-    delays_ms: [0, 20, 40, 60]
+    delays_ms: [0, 40, 80, 100]   # 80, 100 ms: beyond training, where policies fall (visible)
     gif: true
   cliff:       # where the no-delay controller breaks
     rows: [A]

@@ -83,19 +83,24 @@ def verdict(fall_step: int, err: float, tau: float, fps: int) -> str:
     return f"this episode: off by {err:.2f} m/s -> {ok}"
 
 
-def label(frames: list, lines: list[str], last: str) -> list:
-    font = ImageFont.load_default(size=13)
+def label(frames: list, text: list[str], fell: list[bool], size: int = 13) -> list:
+    """Draw `text` (shown from the start, so a short clip has the verdict) on every frame, and a
+    large FELL from the fall on (the tracking camera can lose a fallen robot)."""
+    font = ImageFont.load_default(size=size)
+    big = ImageFont.load_default(size=int(size * 2.8))
     out = []
-    for f in frames:
+    for f, down in zip(frames, fell, strict=True):
         img = Image.fromarray(f)
         dr = ImageDraw.Draw(img)
-        text = [*lines, last]  # the verdict is shown from the start, so a short clip has it
-        y = 4
+        y = 3
         for s in text:
             box = dr.textbbox((6, y), s, font=font)
             dr.rectangle((box[0] - 3, box[1] - 2, box[2] + 3, box[3] + 2), fill=(0, 0, 0))
             dr.text((6, y), s, fill=(255, 255, 255), font=font)
-            y = box[3] + 5
+            y = box[3] + 4
+        if down:
+            w, h = img.size
+            dr.text((w / 2, h * 0.6), "FELL", fill=(200, 30, 30), font=big, anchor="mm")
         out.append(np.asarray(img))
     return out
 
@@ -124,19 +129,28 @@ def main() -> None:
     for name, v in cfg.videos.items():
         if only and name != only:
             continue
-        rows = []
+        rows, gif_rows = [], []
         for c in v.rows:
             run = ROOT / "runs" / f"{cfg.conds[c].stem}_s{seeds[c]}_{cfg.commit}"
             if c not in evs:
                 evs[c] = NativeEvaluator(run, ncfg)
-            panels = []
+            panels, small = [], []
             for ms in v.delays_ms:
                 sub = round(ms / MS_PER_SUBSTEP)
                 frames, fs, err = rollout(evs[c], Cell("action", action_delay=sub), ep, steps, cfg)
                 sr = 100 * curves.loc[c, float(ms)]
                 last = verdict(fs, err, tau, cfg.fps)
                 lines = [f"{cfg.conds[c].label} | delay {ms} ms", f"all seeds: {sr:.0f} % success"]
-                panels.append(label(frames, lines, last))
+                fell = [0 <= fs <= t for t in range(len(frames))]
+                panels.append(label(frames, [*lines, last], fell))
+                if v.get("gif"):  # label after shrinking, so the text stays readable
+                    g = cfg.gif
+                    k = slice(0, int(g.seconds * cfg.fps), cfg.fps // g.fps)
+                    sz = (int(cfg.width * g.scale), int(cfg.height * g.scale))
+                    raw = [np.asarray(Image.fromarray(f).resize(sz)) for f in frames[k]]
+                    out_ = "falls -> fail" if fs >= 0 else ("success" if err <= tau else "fail")
+                    short = [f"{c.split('_')[0]} | {ms} ms", f"all seeds {sr:.0f} %", out_]
+                    small.append(label(raw, short, fell[k], g.font))
                 meta["videos"].setdefault(name, []).append(
                     {
                         "cond": c,
@@ -149,14 +163,13 @@ def main() -> None:
                 )
                 print(f"{name}: {c} {ms} ms {last}", flush=True)
             rows.append([np.concatenate(fs, axis=1) for fs in zip(*panels, strict=True)])
+            gif_rows.append([np.concatenate(fs, axis=1) for fs in zip(*small, strict=True)])
         video = [np.concatenate(fs, axis=0) for fs in zip(*rows, strict=True)]
         mediapy.write_video(out / f"{name}.mp4", video, fps=cfg.fps)
         if v.get("gif"):
             g = cfg.gif
-            step = cfg.fps // g.fps
             small = [
-                Image.fromarray(f).resize((int(f.shape[1] * g.scale), int(f.shape[0] * g.scale)))
-                for f in video[: int(g.seconds * cfg.fps) : step]
+                Image.fromarray(np.concatenate(fs, axis=0)) for fs in zip(*gif_rows, strict=True)
             ]
             gif = ROOT / cfg.gif_dir / f"f2_{name}.gif"
             small[0].save(

@@ -1,0 +1,14 @@
+# Stage 1 diagnosis of D_r40's learning failure (log D52). scripts/diagnose_d.py. Exploratory, Mac only.
+commit: bc378de
+out: runs/_diagnose_d
+native: configs/native_eval/default.yaml   # fall definition, eval seed, MJX key splits
+walk_return: 25.0          # final eval return > this = walks (F43)
+runs:                      # stem: seeds to replay
+  D_r40_hist4: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+  C_r40_mlp: [0, 5, 7]     # C's 2 standing seeds + 1 walking seed for reference
+  A_mlp: [0]
+checkpoints: [it000122, it000366, it000610, it000977, final]   # ~20, 60, 100, 160, 200M steps
+action_delays: [0, 5]      # substeps: 0 and 20 ms (inside the 0-40 ms training range)
+episodes: 16               # first 16 MJX grid episodes
+steps: 500                 # 10 s
+workers: 8

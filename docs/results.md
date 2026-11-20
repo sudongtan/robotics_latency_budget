@@ -1,6 +1,88 @@
 # Results
 
-First results from session S (Phase 5): 96 training runs at commit `4a4a467`, each evaluated in MJX
+Two studies, reported separately and never pooled: **F2** (the method comparison, 0–40 ms training
+delay, commit `bc378de`) and the **original study** (0–80 ms, commit `4a4a467`, further below). Between
+them, follow-up F1 (exploratory, 5 seeds) found that the 0–80 ms range caused the original learning
+failure. The pre-registered hypotheses are discussed separately in [hypotheses.md](hypotheses.md); this
+page reports what each method does.
+
+Common to both: success = no fall in 20 s and mean linear-velocity tracking error ≤ τ = 0.1552 m/s
+(computed from A alone, before any other condition was analysed). Numbers are interquartile means (IQM)
+over **all** seeds with 95 % stratified-bootstrap CIs (5,000 resamples); no best-seed numbers.
+
+## F2: method comparison, trained on 0–40 ms action delay
+
+50 training runs (5 methods × 10 seeds), same PPO recipe, reward, network size and 200M-step budget.
+C, D, E and F train with action delay drawn per episode from U{0..40 ms}; A trains without delay. Each
+policy is tested on 256 paired episodes per test delay (0–120 ms). Regenerate with
+
+```bash
+uv run python scripts/analyze_f2.py      # runs/_analysis_f2/ (tables, curves, hypotheses.json)
+uv run python scripts/make_f2_figure.py  # docs/figures/f2_success_vs_action_latency.png
+```
+
+| Method | Walk (return > 25) | L50 (ms), all seeds | L50, walking seeds only | Success at 0 ms | Training time |
+|---|---|---|---|---|---|
+| A: no delay, MLP | 10/10 | 20 [20, 21] | 20 (10) | 94 % [94, 95] | 6.6 min |
+| C: random delay, MLP | 8/10 | 56 [28, 57] | 57 (8) | 89 % [49, 90] | 6.7 min |
+| D: random delay, last 4 observations | 2/10 | 0 [0, 32] | 66 (2) | 3 % [3, 45] | 6.7 min |
+| E: random delay, GRU | 9/10 | 66 [53, 67] | 66 (9) | 93 % [78, 94] | 12.7 min |
+| F: random delay, MLP + true delay | 8/10 | 51 [26, 54] | 52 (8) | 86 % [47, 89] | 6.7 min |
+
+L50 = test action delay at which success first drops below 50 %. "Walking seeds only" selects on the
+outcome and is descriptive. Training time = wall-clock on one RTX 4090.
+
+Success rate (IQM over all seeds) by test action delay:
+
+| ms | 0 | 20 | 40 | 60 | 80 | 100 | 120 |
+|---|---|---|---|---|---|---|---|
+| A | .94 | .51 | 0 | 0 | 0 | 0 | 0 |
+| C | .89 | .87 | .75 | .41 | .08 | .01 | 0 |
+| D | .03 | .03 | .03 | .03 | .02 | .02 | .01 |
+| E | .93 | .90 | .84 | .60 | .23 | .04 | .01 |
+| F | .86 | .85 | .70 | .14 | 0 | 0 | 0 |
+
+**How strong each result is.** Ten seeds settle large effects but not small ones.
+
+- Well supported: A fails at about one control step (L50 20 ms, CI 19.7–20.6). Random-delay training
+  raises L50 well above A (C 56, E 66; neither CI reaches A's). History learns to walk less often
+  (D 2/10 vs C 8/10, Fisher exact p = 0.02; vs E 9/10, p = 0.005). The GRU encodes the delay (below).
+  The GRU takes 1.9× the training time.
+- Not established: E vs C. E has the higher point estimates, but the L50 CIs overlap and walk rates are
+  9/10 vs 8/10 (p = 1.0). F vs C: no benefit from the true-delay input was found, which is not evidence
+  that there is none. D's walking seeds (n = 2): too few to say anything about history when it learns.
+
+**Sensor delay (secondary test axis).** Testing with delayed observations instead of delayed actions
+gives about the same L50 for A (21 ms), C (57) and E (68). F collapses on it (L50 8 ms), although its
+action-delay L50 is 51 ms. Not investigated. A likely cause: F's input also carries the true sensor
+delay, which was always 0 in training, so any non-zero value is new to the network.
+
+**Delay probe.** A ridge regression reads the true action delay from the policy's internal features. GRU
+(E): R² 0.78 [0.71, 0.80], vs. 0.41 for A (a policy never trained on delay, which still sees its effects)
+and 0.43 for an untrained GRU. D: −0.01 (its 8 standing seeds carry no signal). F: 0.83 (the delay is
+its input).
+
+**Why D fails to learn (exploratory, Mac-only diagnosis of the existing runs, `scripts/diagnose_d.py`).**
+Every policy first learns to stand (by about 20M steps), then gradually steps more, and starts walking
+once it steps at roughly 1–1.5 foot touchdowns per second per foot. A gets there by 40M steps, C and E
+by 60–100M, D's two walking seeds at 100M and 140M. D's eight standing seeds were still stepping more at
+every checkpoint and reached 0.8–1.1 touchdowns per second at 200M, without falling or moving forward.
+Exploration noise shrinks equally fast in all methods, so it does not explain the difference. Whether
+the standing seeds would walk with more training, and whether the cause is the history input, the
+narrower first layer that came with it, or the delay, is not tested (see Further work in the README).
+The original study's ablations point the same way (D learned least under sensor delay and motor lag
+too), but with 5 seeds each those differences are not significant (p = 0.21, 0.44).
+
+**Videos** (`scripts/make_videos.py`; seed per method fixed by rule, one episode drawn at random). A
+video shows falls but not tracking error: at 80 ms C and E both fail on tracking and look the same.
+
+*Correction (2026-11-19):* an earlier README version gave the L50 CIs as C [36, 57], D [0, 22],
+E [54, 67], F [26, 54], copied from a preliminary run. The values above reproduce from the committed
+code; the point estimates were unchanged.
+
+## Original study (0–80 ms training)
+
+Session S (Phase 5): 96 training runs at commit `4a4a467`, each evaluated in MJX
 with 256 paired episodes per test setting. Everything here is regenerated by
 
 ```bash
@@ -10,10 +92,10 @@ uv run python scripts/make_figures.py   # docs/figures/*.png
 
 Rules and thresholds are those of the frozen [pre-registration](preregistration.md). Success threshold
 τ = 0.1552 m/s, computed from condition A alone before any other condition was analysed. Numbers are IQM over
-seeds with 95 % stratified-bootstrap CIs (5,000 resamples) unless stated. Not yet included: sim-to-sim
-transfer (native MuJoCo), dynamics perturbations, probing (H6), gait analysis.
+seeds with 95 % stratified-bootstrap CIs (5,000 resamples) unless stated. Sim-to-sim, perturbations
+and probing were added after the first writing (below); gait analysis was never done.
 
-## Main finding: under randomized delay, most MLP policies never learn to walk
+### Main finding: under randomized delay, most MLP policies never learn to walk
 
 Final returns are bimodal (Fig. 2). A seed either learns to walk (return ≈ 26–31) or settles into
 standing still without falling (≈ 19–21: tracking error ≈ 0.79 m/s, the size of the command; success ≈ 2 %;
@@ -34,7 +116,7 @@ Consequence for the hypotheses: H2–H4 were meant to compare robustness and nom
 walk. Their rules come out "not supported", but the reason is that C and D did not learn the task, not a
 robustness trade-off.
 
-## Hypothesis verdicts
+### Hypothesis verdicts
 
 | | Verdict | Estimates (IQM, 95 % CI) | Note |
 |---|---|---|---|
@@ -105,7 +187,7 @@ delay U{0..80 ms}, 5-fold episode-level CV; `runs/_analysis/h6.json`, `probe_per
 - The MLP probe (secondary, fixed settings) overfits where there is no signal (R² ≈ −0.6 for C/D) and adds
   nothing where there is (E 0.55, A 0.10); F 0.93. Not used for any conclusion.
 
-## Condition summary
+### Condition summary
 
 IQM [95 % CI] over seeds. L50 is the action latency at which success first drops below 50 %; 0 means below 50 %
 already at 0 ms. No seed was censored at 120 ms except as noted. "Margin" is the delay margin (Li & Sun 2026);
@@ -143,7 +225,7 @@ Other observations, descriptive only:
 - Policies trained on observation delay (C_obs, E_obs) learned far more reliably (4/5 and 5/5) than those
   trained on action delay (C 0/10, E 7/10). Their walking seeds tolerate ≈ 85–110 ms on both channels.
 
-## Figures
+### Figures
 
 **Fig. 1** — `docs/figures/fig1_success_vs_action_latency.png`. Script: `scripts/make_figures.py`
 (`fig_hero`). Data: `runs/_analysis/per_setting.parquet` (axis `action`).
@@ -174,7 +256,7 @@ channels give similar success, within ≈ 10 pp. C sits at the floor on both.
 domain-randomization draws). Right three: native success under floor friction ×, trunk payload and motor
 strength × (PD gains and torque limit scaled together), at 0 ms (solid) and 20 ms (dashed) action latency.
 
-## Sim-to-sim (native MuJoCo) and dynamics perturbations (exploratory)
+### Sim-to-sim (native MuJoCo) and dynamics perturbations (exploratory)
 
 All 90 finished runs were replayed in native MuJoCo (C engine, float64; the MJX runs use JAX, float32) on 64
 episodes per cell, paired with the MJX grid's episodes (`scripts/eval_native.py`; parity tests in
@@ -208,7 +290,7 @@ E's numbers include its 3 standing seeds (≈ 2 % each), which bound its IQM.
 vs. cumulative training time, at 0, 20 and 40 ms test action latency; 32 paired episodes per point. Thin: seeds;
 bold: IQM over seeds. The GRU (E) trains ≈ 2× slower per step, so its 200M steps span ≈ 13 min vs. ≈ 6.4 min.
 
-## Robustness over training (exploratory)
+### Robustness over training (exploratory)
 
 - **The baseline gets more latency-fragile as it keeps training.** A's success at 0 ms rises to 91 % by 60M
   steps and keeps creeping up (96 % at 200M). At 20 ms its IQM is 67 % at 60M and 56 % at 200M; at 40 ms it
@@ -221,16 +303,9 @@ bold: IQM over seeds. The GRU (E) trains ≈ 2× slower per step, so its 200M st
   standing seeds never left ≈ 3 %. A longer budget might help E's late seeds. Nothing here suggests it would
   help the MLPs: C is at ≈ 3 % in every seed at every checkpoint.
 
-## Status of this version and next steps
+### Status of the original study
 
 Closed as a first version (2026-11-08): the pre-registered verdicts are reported as they are, with the learning
-failure under randomized delay as the main result. Not run on any other PPO recipe, so whether the failure is
-specific to this recipe, budget or simulator is open. The project's original question (which mitigation buys the
-most robustness per unit of training cost) cannot be answered from these runs: C, D and F never walk, leaving only
-the GRU.
-
-The most informative next experiment is the same setup with a narrower randomization range (e.g. 0–40 ms)
-or a latency curriculum, for all conditions. If the MLPs then learn, H2–H4 become testable.
-
-Deferred: a longer-budget or latency-curriculum follow-up for all conditions, gait analysis, time-resolved probes,
-delay vs. motor-lag cross-evaluation, videos, a literature search on the learning failure, and a paper.
+failure under randomized delay as the main result. The next experiment proposed here, the same setup on a
+narrower delay range, was run as follow-up F1 and the method comparison F2 (above). What remains open is
+listed under "Further work" in the [README](../README.md#further-work).

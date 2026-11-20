@@ -2,7 +2,8 @@
 
 Robots act on slightly outdated information, because sensing, computing and moving take time.
 This project measures how much delay a learned walking controller (simulated Unitree Go1, PPO,
-MuJoCo/MJX) tolerates before it fails, and which training method makes it most tolerant.
+MuJoCo/MJX) tolerates before it fails, and how common training methods compare. The project is closed
+(2026-11-19); open questions are listed under [Further work](#further-work).
 
 Between the moment a robot senses its body and the moment its motors respond, tens of
 milliseconds pass. In simulation this delay is usually zero; on real hardware it is not. Today
@@ -50,31 +51,44 @@ all seeds with 95 % bootstrap CIs; no best-seed numbers.
 | Method (trained on random delay 0–40 ms, except A) | Seeds that learn to walk | L50 (ms) | Success at 0 ms |
 |---|---|---|---|
 | A: no delay in training, MLP | 10/10 | 20 [20, 21] | 94 % |
-| C: random delay, MLP | 8/10 | 56 [36, 57] | 89 % |
-| D: random delay, MLP + last 4 observations | **2/10** | 0 [0, 22] | 3 % |
-| **E: random delay, GRU (memory)** | 9/10 | **66 [54, 67]** | **93 %** |
+| C: random delay, MLP | 8/10 | 56 [28, 57] | 89 % |
+| D: random delay, MLP + last 4 observations | **2/10** | 0 [0, 32] | 3 % |
+| E: random delay, GRU (memory) | 9/10 | 66 [53, 67] | 93 % |
 | F: random delay, MLP told the true delay | 8/10 | 51 [26, 54] | 86 % |
 
-1. **A controller trained without delay fails at about one control step.** It acts every 20 ms, and
-   its success drops from 94 % to 50 % at 20 ms of delay and to almost 0 by 32 ms.
-2. **Training with random delay triples the tolerable delay** (L50 20 → 56 ms for the plain MLP) at a
-   small cost at zero delay (89 % vs 94 %).
-3. **Memory (GRU) is the best method:** the highest tolerance (66 ms, well beyond the 40 ms seen in
-   training), almost no cost at zero delay, and the most reliable training (9/10 seeds). It costs
-   about 1.9× the training time of an MLP.
-4. **The GRU learns to estimate the delay.** A linear probe reads the true delay from its memory
-   (R² 0.78), far above the no-delay controller (0.41) and an untrained GRU (0.43).
-5. **A short observation history fails to learn**: 8 of 10 seeds learn to stand still instead of
-   walking. The 2 seeds that walk are as robust as the GRU (L50 ≈ 66 ms), but two seeds prove nothing.
-6. **Telling the policy the true delay does not help** (F is no better than C).
-7. **Training on too wide a delay range breaks learning.** The original study randomized delay over
-   0–80 ms; there, the MLP-based methods never learned to walk (0/10) and only the GRU did (7/10).
-   Narrowing to 0–40 ms (above), or fine-tuning a controller that already walks, fixes it: a
-   fine-tuned MLP reaches L50 ≈ 81 ms (exploratory, 5 seeds).
+Ten seeds per method settle large effects, not small ones. The findings are therefore split by how
+strongly the data support them.
 
-Full numbers and caveats: [`docs/results.md`](docs/results.md) (original study) and
-`runs/_analysis_f2/` (F2, `scripts/analyze_f2.py`). Limits: one simulator family, one
-robot, one PPO recipe and budget; delay tested on the action side only in F2.
+**Well supported**
+
+1. **A controller trained without delay fails at about one control step.** It acts every 20 ms; its
+   success drops from 94 % to 50 % at 20 ms of delay (CI 19.7–20.6 ms) and to almost 0 by 32 ms.
+2. **Training with random delay roughly triples the tolerable delay** (L50 20 → 56 ms for the plain
+   MLP, 66 ms with a GRU), at a small cost at zero delay (C 89 % vs A 94 %).
+3. **A short observation history learns to walk less often:** 2 of 10 seeds, vs 8/10 for the plain MLP
+   (p = 0.02) and 9/10 for the GRU (p = 0.005). The other 8 learn to stand still.
+4. **The GRU learns to estimate the delay.** A linear probe reads the true delay from its memory
+   (R² 0.78 [0.71, 0.80]), far above the no-delay controller (0.41) and an untrained GRU (0.43).
+5. **The GRU costs 1.9× the training time** of an MLP (12.7 vs 6.7 min per run).
+6. **Training on too wide a delay range breaks learning.** With delay randomized over 0–80 ms (original
+   study) the plain MLP walked in 0/10 seeds; on 0–40 ms in 8/10 (F2), and in a same-session check
+   4/5 vs 0/5 (follow-up F1).
+
+**Suggestive, not established**
+
+7. **The GRU is the most delay-tolerant method:** highest point estimates (L50 66 vs 56 ms for the
+   MLP; 9/10 vs 8/10 seeds walk), but the confidence intervals overlap.
+8. **Telling the policy the true delay does not help:** F is no better than C, but "no benefit found"
+   is not "no benefit".
+9. **History may be slow rather than broken.** All policies first learn to stand, then step more and
+   more until they walk. D's standing seeds were still stepping more at 200M steps, below the rate at
+   which the others started walking (Mac-only diagnosis of the saved runs). Whether they would walk
+   with more training, and why history is slower, was not tested. Its 2 walking seeds reach L50 ≈ 66
+   ms, but two seeds say little.
+10. **Fine-tuning a walking controller on random delay** reaches L50 ≈ 81 ms (exploratory, 5 seeds).
+
+Full numbers, the sensor-delay test, the probe and the D diagnosis: [`docs/results.md`](docs/results.md).
+Limits: one robot, one simulator family, one PPO recipe and budget; trained on action delay only.
 
 ## How the study was run
 
@@ -97,7 +111,31 @@ robot, one PPO recipe and budget; delay tested on the action side only in F2.
 | Original study (Nov 2026) | 8 conditions + ablations, 0–80 ms randomized delay. Most methods never learned to walk; closed as a negative result ([`docs/results.md`](docs/results.md)) |
 | Follow-up F1 | Diagnosis: the 0–80 ms range, not the critic, caused the failure; narrower range and fine-tuning both fix it |
 | F2 | Method comparison rerun on 0–40 ms, 10 seeds per method (results above) |
-| Not done | Videos, gait analysis, observation-side delay under 0–40 ms, a paper |
+| Videos and D diagnosis | Rule-based videos (above); Mac-only look at why history learns slowly |
+| Closed (2026-11-19) | Open questions below |
+
+## Further work
+
+Nothing below was run. Roughly in order of how much each would settle:
+
+- **Why history learns slowly.** Continue training D's standing seeds (do they walk?), train D without
+  delay (is history alone slow?), and train the plain MLP with D's narrower first layer (is it the
+  width?). About 13 GPU runs, ≈ 3 h. Cheaper Mac checks first: replay all 10 checkpoints, and measure
+  step quality (foot lift, step timing) of the standing seeds against the walkers just before take-off.
+- **GRU vs plain MLP.** Estimate from the existing runs how many seeds would separate them, then run
+  them.
+- **A factorial design.** Methods were tested as packages (delay randomization + input + network).
+  Crossing training delay (none / random) with input (latest observation / history) and network
+  (MLP / GRU) would separate the factors.
+- **The oracle's sensor-delay collapse.** F tolerates 51 ms of action delay but only 8 ms of sensor
+  delay; probably because its sensor-delay input was always 0 in training. Unchecked.
+- **Sensor delay and motor lag in training** at 0–40 ms (only tested at 0–80 ms, where most methods
+  failed to learn).
+- **Fine-tuning for every method**, not only the plain MLP, and other history lengths.
+- **Generality.** Other PPO settings and budgets, another simulator, another robot, and hardware.
+- **Smaller items.** Gait analysis; H1 recomputed from F2's baseline; reconcile the F2 cost estimate
+  with the provider's bill; verify the year of Walsh et al. in
+  [`docs/references.md`](docs/references.md) (the two 2026 arXiv references were checked).
 
 ## References
 

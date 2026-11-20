@@ -69,6 +69,12 @@ learn to walk.
    did not compute H1, although its A runs allow it.
 6. **H1's predicted range was a guess.** 40–60 ms came from intuition about control steps, not from
    a pilot. The baseline was measured only after the rule was frozen.
+7. **Methods were tested as packages, so a failure cannot be traced to a factor.** Each method
+   bundled its training delay, its input and its network: D differs from C in its input (4 frames),
+   a narrower first layer (to match parameter counts) and nothing else, but there was no history
+   or GRU policy trained without delay. When D failed to learn, the design could not say whether
+   history, width or delay was responsible. Crossing training delay × input × network would have
+   cost about 20 extra runs (≈ 3 GPU hours).
 
 The questions behind the hypotheses were sound; the way they were turned into tests was not. The
 README therefore reports what each method does under delay, descriptively, with all seeds and no

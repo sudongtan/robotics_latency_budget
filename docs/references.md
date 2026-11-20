@@ -37,7 +37,8 @@ Works this project builds on, compares with or uses. Grouped by topic; each entr
   A constant delay is handled by adding the pending actions to the state: the basis for the
   history method (D); observation and action delay are equivalent (H5).
 - Walsh, Nouri, Li & Littman, *Learning and Planning in Environments with Delayed Feedback*,
-  Autonomous Agents and Multi-Agent Systems, 2009.
+  Autonomous Agents and Multi-Agent Systems, 2009. (year and venue not re-verified at closing; an earlier
+  conference version may exist).
 - Ramstedt & Pal, *Real-Time Reinforcement Learning*, NeurIPS 2019.
   [arXiv 1911.04448](https://arxiv.org/abs/1911.04448).
 - Derman, Dalal & Mannor, *Acting in Delayed Environments with Non-Stationary Markov Policies*,
@@ -47,8 +48,10 @@ Works this project builds on, compares with or uses. Grouped by topic; each entr
 
 ## Memory and probing
 
-- Chamachot, *Evaluating Factor-Wise Auxiliary Dynamics Supervision…*, arXiv 2603.21268, 2026.
-  [link](https://arxiv.org/abs/2603.21268). Found almost no delay information in an LSTM's state
+- Chamachot, *Evaluating Factor-Wise Auxiliary Dynamics Supervision for Latent Structure and
+  Robustness in Simulated Humanoid Locomotion*, arXiv 2603.21268, 2026.
+  [link](https://arxiv.org/abs/2603.21268). Its main model is a transformer with a factored latent;
+  the result used here is from its LSTM baseline, which held almost no delay information
   (R² ≈ 0.01) when five factors vary; our GRU encodes it strongly (R² 0.78) when only delay varies.
 
 ## Methods and tools

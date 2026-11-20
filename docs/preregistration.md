@@ -249,3 +249,15 @@ Verdicts are labelled "F2 (0–40 ms training)" and do not replace the first ver
 (E walked in 7/10 even on 0–80 ms); D_r40 and F_r40 uncertain (0/10 on 0–80 ms; they see at least as
 much as C). H2 supported (F52: 0 ms success 0.89 vs 0.95 for A; L50 54 vs 20 ms). H3, H4, H6
 uncertain. Results reported whichever way they come out.
+
+### 2026-11-19: closing note (post-hoc)
+
+The project is closed. The frozen definitions (§2, §4, §5: success, τ, delay grid, L50, IQM with
+stratified bootstrap) are used unchanged for all reported numbers. The hypotheses (§2) and decision
+rules (§6) are no longer used to report results: under F2, H3, H4 and H6 depend on condition D,
+which learned to walk in 2 of 10 seeds, so their verdicts describe D's learning failure rather than
+the questions they were written for; H1 was not recomputed from F2's A and H5 was dropped from F2 to
+save GPU time. The verdicts, both studies' estimates and an account of the design problems are in
+[hypotheses.md](hypotheses.md); results are reported descriptively in [results.md](results.md).
+Nothing above this note was edited.
+
